@@ -1398,11 +1398,52 @@ void NPC_AutoCreationProc2()						// LTS AI2
 	}
 }
 
+#include "C:\dragonraja sourcecodenew\MapServer\HigherLayers\Hades\WarfieldMgr.h"
+extern CWarfieldMgr* g_pcWarfieldMgr;
+extern BOOL IsNeoWarfieldServer();
+
+extern cWarfield* g_pWarfield;
+extern bool isNationWarfieldServer();
 void NPC_AutoCreate()		// LTS AI2
 {	//< CSD-030509
 	NPC_AutoCreationProc();
 	NPC_AutoCreationProc2(); // 이벤트 몬스터 등장
 	// 사냥 몬스터 등장
+	if (IsNeoWarfieldServer())
+	{
+		if (NULL != g_pcWarfieldMgr)
+		{
+			int nState = NW_PEACE;
+			g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nState);
+			if (nState == NW_WAR)
+			{
+				g_pRegenManager->Regenerate(CGroupInfo::ET_HADES);
+			}
+			else
+			{
+				g_pRegenManager->Regenerate(CGroupInfo::ET_NORMAL);
+			}
+		}
+
+		return;
+	}
+
+	//< 국가전 전쟁터이면 전쟁 준비 기간과 전쟁 기간을 제외 하고 몬스터를 출현 시킨다.
+	if (isNationWarfieldServer())
+	{
+		if (NULL != g_pWarfield)
+		{
+			int nState = g_pWarfield->GetStatus();
+			if (!((nState == NW_WAIT_PREPARE) || (nState == NW_PREPARE) || (nState == NW_WAIT_WAR) || (nState == NW_WAR)))
+			{
+				g_pRegenManager->Regenerate(CGroupInfo::ET_NORMAL);
+			}
+		}
+
+		return;
+	}
+	//>
+
 	if (!g_pArenaManager->IsColossusArena())
 	{
 		g_pRegenManager->Regenerate(); 

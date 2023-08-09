@@ -504,7 +504,7 @@ class cNation
 
 	int							m_NewWarfieldStatus[MAX_NEW_WARFIELD];				// LTS NEW_NATION_WAR
 	DWORD						m_NewWarfieldRemainTime[MAX_NEW_WARFIELD];
-
+	DWORD						m_dwWarRemainTime[WI_MAX_WARFIELD];	// 각 전쟁 남은 시간
 	inline int		GetPointMAXIndex(unsigned short Point[3]);										// LTS NEW LOCALWAR	
 	inline int		GetPointMAXIndex();										//030505 kyo 한번만에 국지전승리국가를 리턴한다.
 	inline int		GetPointEqual(int Index,unsigned short Point[3]);								// LTS NEW LOCALWAR	
@@ -522,18 +522,18 @@ public :
 	void SetWarFieldStatus(int WarfieldNo,int Status);
 	void CheckWarFieldStatus(int WarfieldNo,int Status);
 	int  GetWarfieldStatus(int WarfieldNo);
-
+	
 	void			CheckStartWarfieldWar();						// New		Day of Week
 	void			CheckAndActive(int Index);
 	void			NewCheckAndActive(int Index);
 	void			GetDayofWeek();
-
+	void NeoCheckAndActive(INT nIndex);
 	int  GetVoteData(int WarfieldNo) { return m_VoteData[WarfieldNo]; }
 	void IncVoteData(int WarfieldNo) { m_VoteData[WarfieldNo]++; }
 	void InitVoteData(int WarfieldNo) { m_VoteData[WarfieldNo]=0; }
 
 	void ClearWarfieldData(int Warfieldno);
-
+	void GetNeoWarRemainTime(char* ReturnStr);
 	DWORD GetWarCount() { return (DWORD)m_WarNo%128; }
 	int   GetWarNo()  { return m_WarNo; }
 
@@ -666,7 +666,7 @@ public :
 	{
 		return Warfield[WarfieldNo].GetLeadCandidaterName(Kind);
 	}
-
+	int GetSecretOpenedWarfieldNo();
 	bool ElectCommander(int WarfieldNo) { return Warfield[WarfieldNo].ElectCommander(); }
 	bool CheckSecretPlaceOpen(int WarfieldNo) { return Warfield[WarfieldNo].CheckSecretPlaceOpen(); }
 	bool CheckSecretPlaceOpen()
@@ -678,40 +678,26 @@ public :
 		return false;
 	}
 
-	int GetSecretOpenedWarfieldNo()
-	{
-		if (Warfield[0].CheckSecretPlaceOpen()) return 0;
-		if (Warfield[1].CheckSecretPlaceOpen()) return 1;
-		if (Warfield[2].CheckSecretPlaceOpen()) return 2;
-		if (m_NewWarfieldStatus[0]==NW_SOPEN) return 3;
-		return -1;
-	}
-	void SetRemainTime(int WarfieldNo,DWORD RemainTime) 
-	{
-		if (WarfieldNo>=0&&WarfieldNo<=2)
-			Warfield[WarfieldNo].SetRemainTime(RemainTime); 
-		else
-		if (WarfieldNo>=3)
-			m_NewWarfieldRemainTime[WarfieldNo-3]=RemainTime;
-	}
-	DWORD GetRemainTime(int WarfieldNo) 
-	{ 
-		switch(WarfieldNo)//030116 lsw 워닝 제거
-		{
-		case 0:
-		case 1:
-		case 2:
-			{
-				return Warfield[WarfieldNo].GetRemainTime(); 
-			}break;
-		case 3:
-		default:
-			{
-				return m_NewWarfieldRemainTime[WarfieldNo-3];
-			}break;
-		}
-		return 0;
-	}
+
+	void SetRemainTime(int WarfieldNo, DWORD RemainTime);
+	DWORD GetRemainTime(int WarfieldNo);
+	//{ 
+	//	switch(WarfieldNo)//030116 lsw 워닝 제거
+	//	{
+	//	case 0:
+	//	case 1:
+	//	case 2:
+	//		{
+	//			return Warfield[WarfieldNo].GetRemainTime(); 
+	//		}break;
+	//	case 3:
+	//	default:
+	//		{
+	//			return m_NewWarfieldRemainTime[WarfieldNo-3];
+	//		}break;
+	//	}
+	//	return 0;
+	//}
 
 	void GetWarRemainTime(char* ReturnStr);
 	void GetNewWarRemainTime(char* ReturnStr);

@@ -1159,7 +1159,47 @@ int CSkillMgr::GenerateNPCItem2(CHARLIST *NPC, NPC_Generation *NPCGenerate)
 
 	return 0;
 }
-
+int CSkillMgr::FallItemWhenNPCDie(CHARLIST* pAttacker, CHARLIST* NPC)//아이템 메니저로 옮겨야 할 것 같다..
+{
+	for (int k = 0; k < 3; k++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			for (int i = 0; i < 8; i++)
+			{
+				ItemAttr item = NPC->inv[k][j][i];
+				if (item.item_no)
+				{
+					DropItem(NPC->X + (rand(100)) - 50, NPC->Y + (rand(100)) - 50, &item);
+				}
+			}
+		}
+	}
+	int Npcno = NPC->SprNo + NPC->mutant * 100;
+	if (!(Npcno < 0 || Npcno>400))
+	{
+		GiveSpecialItem(Npcno, NPC->X, NPC->Y, MapNumber, 0);
+		/*
+		if( pAttacker )
+		{ // 몬스터 레벨이 낮은 때, 몬스터보다 15레벨 이상 높으면 아이템을 드랍하지 않는다. 성직자는 25렙 제한.
+			int iOverLevel = 15;
+			if( pAttacker->Class == 4 )
+			{
+				iOverLevel = 25;
+			}
+			if( NPC->GetLevel() > 80 || pAttacker->GetLevel() <= ( NPC->GetLevel() + iOverLevel ) )
+			{
+				GiveSpecialItem(Npcno,NPC->X,NPC->Y,MapNumber,0);
+			}
+		}
+		else
+		{
+			GiveSpecialItem(Npcno,NPC->X,NPC->Y,MapNumber,0);
+		}
+		*/
+	}
+	return 0;
+}
 int CSkillMgr::FallItemWhenNPCDie(CHARLIST *NPC)//아이템 메니저로 옮겨야 할 것 같다..
 {
 	for( int k = 0 ; k < 3 ; k ++)

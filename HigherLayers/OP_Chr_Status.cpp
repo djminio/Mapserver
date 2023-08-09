@@ -121,13 +121,31 @@ void DropItem(CHARLIST* pTarget)
 	}
 }	//> CSD-031210
 
+#include "LogManager.h"
+#include "Hades/WarfieldMgr.h"
+extern CWarfieldMgr* g_pcWarfieldMgr;
 extern bool IsActiveDugeon();
+extern BOOL IsNeoWarfieldServer();
 
 void ExpDown(CHARLIST* pCaster, CHARLIST* pTarget, bool bDrop)
 {	//< CSD-030930
 #ifdef LMS_MAPSERVER
 	return;
 #endif
+	if (IsNeoWarfieldServer())
+	{
+		_ASSERT(g_pcWarfieldMgr != NULL);
+		INT nState = NW_PEACE;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nState);
+
+		if (nState == (INT)NW_WAR)
+		{
+			return;
+		}
+
+		// 경험치가 깎이는지 로그로 남겨보자!!
+		g_pLogManager->SaveLogNeoNationWar(NNT_CHARACTER_INFO, "***!!! %s Exp Down!! Current War State : %d (4 = War)", pTarget->Name, nState);
+	}
 	if (g_pArenaManager->IsColossusArena()){return;}
 	if (IsActiveDugeon()){return;}
 	if (pTarget == NULL){return;}

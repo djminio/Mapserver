@@ -172,8 +172,9 @@ void GetSquadRare(char *Squadrare,int squadNo/*char [3]*/)
 
 extern bool isNewWarfieldServer();
 extern CNewWarfield* g_pNewWarfield;
-
-
+extern BOOL IsNeoWarfieldServer();
+#include "C:\dragonraja sourcecodenew\MapServer\HigherLayers\Hades\WarfieldMgr.h"				
+extern CWarfieldMgr* g_pcWarfieldMgr;
 // 020418 YGI
 int IsStartNationWar()		// 이 맵이 전투 맵이고 현재 전투 중인가?
 {
@@ -187,6 +188,15 @@ int IsStartNationWar()		// 이 맵이 전투 맵이고 현재 전투 중인가?
 		if (g_pNewWarfield->GetWarfieldStatus()==NW_WAR)
 			return true;
 	}
+	//< 이맵이 전투맵이고 현재 국가전이라면 같은편끼리 PK를 못하게 하는 것으로 이해했다
+	if (IsNeoWarfieldServer())
+	{
+		INT nState = NW_PEACE;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nState);
+		if (nState == NW_WAR)
+			return TRUE;
+	}
+	//>
 	return false;
 //	return ( isNationWarfieldServer() && g_pWarfield->GetStatus()==NW_WAR );
 }

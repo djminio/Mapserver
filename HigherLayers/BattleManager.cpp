@@ -2804,6 +2804,7 @@ bool CBattleManager::IsBreak(CHARLIST* pCaster, CHARLIST* pTarget) const
 }
 
 extern int g_NoPkMode;//acer7
+extern BOOL IsNeoWarfieldServer();
 bool CBattleManager::IsColleague(CHARLIST* pCaster, CHARLIST* pTarget) const
 {	//< CSD-031013
 	if(pCaster->IsPlayer() && pTarget->IsNpc() && !g_PKRestriction.CanBattle(pCaster)) //Eleval
@@ -2876,7 +2877,11 @@ bool CBattleManager::IsColleague(CHARLIST* pCaster, CHARLIST* pTarget) const
 	{
 		return true;
 	}
-	
+	//< 1.4 신규국가전에서는 유저는 모두 동맹이다.
+	if (::IsNeoWarfieldServer() && ::IsWar())
+		return TRUE;
+	//> 
+
 	if (g_NoPkMode == 1)
 	{
 		return true;

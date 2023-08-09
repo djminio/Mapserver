@@ -65,7 +65,7 @@ VOID CWarfieldInfo::LoadMapMoveInfo(INT nWarfieldNo)
 	m_acMapSetting[nWarfieldNo].m_nUserEntranceLimitTime = ::GetPrivateProfileIntA(szTemp, "UserEntranceLimitTime", 1800, MapServerConfigFileName);	// LTH-040510-KO 유저 전쟁터 이동 제한 시간 읽어오기
 }	
 
-extern HDBC g_hDBC_DragonDB;
+//extern HDBC hDBC;
 
 /**
  * @fn		CWarfieldInfo::LoadWarTimeInfo().

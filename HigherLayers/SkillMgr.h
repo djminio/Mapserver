@@ -295,7 +295,7 @@ public:
 	void	SendSkillExp( const int iType, const t_skillexp exp, const int cn);
 
 	int		FallItemWhenNPCDie(CHARLIST *NPC);
-	
+	int FallItemWhenNPCDie(CHARLIST* pAttacker, CHARLIST* NPC);
 	int		GenerateNPCItem2(CHARLIST *NPC, NPC_Generation* g);
 
 	void	RecvCMD_CONFORM_SADONIX(const t_packet &p);

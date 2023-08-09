@@ -20,7 +20,7 @@ extern LPWARFIELDINFO g_pcWarfieldInfo;
 void SendCMD_CHECK_REMAIN_GUARD(int nWarfieldNo, DWORD dwRemainTime, int aRemainGuard[MAX_TEAM][GS_MAX_GUARD_SPECIES])
 {
 	t_packet packet;
-	packet.h.header.type = 26505;
+	packet.h.header.type = CMD_CHECK_REMAIN_GUARD;
 	packet.u.NationWar.RemainGuard.nWarfieldNo = nWarfieldNo;
 	packet.u.NationWar.RemainGuard.dwRemainTime = dwRemainTime;
 	int nJ, nI;
@@ -77,7 +77,7 @@ CHadesWarfield::~CHadesWarfield()
 STDMETHODIMP CHadesWarfield::Init(INT nWarfieldNo)
 {
 	m_nWarfieldNo = nWarfieldNo;
-	g_pcWarfieldInfo->LoadWarTimeInfo(m_nWarfieldNo);
+	//g_pcWarfieldInfo->LoadWarTimeInfo(m_nWarfieldNo);
 
 	SAFE_DELETE(m_lpWarfieldState);
 	LPFACTORYDEFINE lpStateFactory = NULL;

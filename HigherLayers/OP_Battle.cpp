@@ -629,7 +629,7 @@ extern void RemoveNPCControlData(int cn,int NPC_ID);	// LTS NPC BUG
 extern void CheckNPCControlData(int cn,int NPC_ID);	// LTS NPC BUG
 // YGI acer 3
 extern int g_LocalWarBegin;			// 011215 LTS
-
+extern BOOL IsNeoWarfieldServer();
 void RemoveFromTamedList(CHARLIST *d)
 {
 	if(d == NULL) return;
@@ -778,11 +778,23 @@ void killCharacter( CHARLIST *a,CHARLIST *d )
 		} 
 		else
 		{
-			if (d->Race==GUARDSTONE)						// 전쟁터 계열
+			if (d->Race == GUARDSTONE)						// 전쟁터 계열
 			{
-				UpdateGuardStoneStatus(a,d);						
+				UpdateGuardStoneStatus(a, d);
+
+				if ((IsNeoWarfieldServer() || isNewWarfieldServer() || isNationWarfieldServer()) && IsWar())
+					SkillMgr.FallItemWhenNPCDie(a, d);
 			}
-			SkillMgr.FallItemWhenNPCDie(d);
+			else
+			{
+				SkillMgr.FallItemWhenNPCDie(a, d);
+			}
+		//> 
+			//if (d->Race==GUARDSTONE)						// 전쟁터 계열
+			//{
+			//	UpdateGuardStoneStatus(a,d);						
+			//}
+			//SkillMgr.FallItemWhenNPCDie(d);
 		}
 		
 		if (!d->ChairNum)							// 서버 AI가 아닌 NPC가 죽으면 바로 컨트롤 데이터를 해제한다.		// LTS DRAGON MODIFY
@@ -805,6 +817,12 @@ void killCharacter( CHARLIST *a,CHARLIST *d )
 		{
 			CountNewWarfieldDeath(a,d);
 		}
+		//< 1.4 패치로 추가
+		if (IsNeoWarfieldServer() && IsWar())
+		{
+			CountNewWarfieldDeath(a, d);
+		}
+		//> 
 #ifdef LMS_MAPSERVER
 		if (g_pArenaManager->IsColossusArena())
 		{

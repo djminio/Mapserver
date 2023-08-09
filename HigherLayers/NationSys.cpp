@@ -505,6 +505,7 @@ bool CheckWarLoopProcess()		// 전쟁 루프가 진행되는지 확인한다.
 		if (g_pNation->GetWarfieldStatus(1)>NW_PEACE) return true;
 		if (g_pNation->GetWarfieldStatus(2)>NW_PEACE) return true;
 		if (g_pNation->GetNewWarfieldStatus(0)>NW_PEACE) return true;
+		if (g_pNation->GetNewWarfieldStatus(WI_HADES_WARFIELD) > NW_PEACE) return true;
 
 	}
 	else
@@ -513,6 +514,7 @@ bool CheckWarLoopProcess()		// 전쟁 루프가 진행되는지 확인한다.
 		if (g_pWarfieldStatus[1].Status>NW_PEACE) return true;
 		if (g_pWarfieldStatus[2].Status>NW_PEACE) return true;
 		if (g_pNewWarfieldStatus[0]>NW_PEACE) return true;
+		if (g_pNation->GetNewWarfieldStatus(WI_HADES_WARFIELD) > NW_PEACE) return true;
 	}
 	return false;
 }
@@ -525,6 +527,7 @@ int ReturnWarfieldNoByWarLoopProcess()		// CheckWarLoopProcess와 쌍으로 쓰인다..
 		if (g_pNation->GetWarfieldStatus(1)>NW_PEACE) return 1;
 		if (g_pNation->GetWarfieldStatus(2)>NW_PEACE) return 2;
 		if (g_pNation->GetNewWarfieldStatus(0)>NW_PEACE) return 3;
+		if (g_pNation->GetNewWarfieldStatus(WI_HADES_WARFIELD) > NW_PEACE) return 4;
 	}
 	else
 	{
@@ -581,7 +584,19 @@ bool IsWar()
 			return true;
 		}
 	}
-
+	//< 1.4 패치 이후 새전쟁터는 매니저에게 질의를 통해 값을 얻는다
+// 상태를 얻어오는 메시지 CWarfieldMgr::WPM_GET_WARFIELD_STATE를 보내어 전달받는다.
+	if (IsNeoWarfieldServer())
+	{	//< 생성되지 않은 포인터 변수를 참조하지 못하도록!!
+		if (NULL != g_pcWarfieldMgr)
+		{
+			INT nStatus = 0;
+			g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nStatus);
+			if (nStatus == (INT)(NW_WAR))
+				return TRUE;
+		}
+	}	//> 
+	//> 
 	return false;
 }
 
@@ -729,6 +744,16 @@ bool CanDestroyTarget(CHARLIST* pCaster,CHARLIST* pTarget)		// CAttackMagic::Res
 	{
 		return g_pNewWarfield->CanAttackGuard(pCaster,pTarget);
 	}
+	//< 1.4 패치 이후 새전쟁터이면
+	if (IsNeoWarfieldServer())
+	{
+		tagOpponent tagOpp;
+		tagOpp.lpCaster = pCaster;
+		tagOpp.lpTarget = pTarget;
+		if (SUCCEEDED(g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_CAN_ATTACK_GUARD, (LPVOID)&tagOpp)))
+			return TRUE;
+	}
+	//> 
 	return false;
 }
 
@@ -836,7 +861,16 @@ bool CanGoBonus()
 			return true;
 		}
 	}
-
+	//< 1.4 패치 이후 새전쟁터는 매니저에게 질의를 통해 값을 얻는다
+// 상태를 얻어오는 메시지 CWarfieldMgr::WPM_GET_WARFIELD_STATE를 보내어 전달받는다.
+	if (IsNeoWarfieldServer())
+	{
+		INT nStatus = 0;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nStatus);
+		if (nStatus == (INT)(NW_SOPEN))
+			return TRUE;
+	}
+	//> 
 	return false;
 }
 // ___________________________________________________________________________
@@ -894,6 +928,11 @@ void DeleteSquadMember(const int cn)    // DragonServer.cpp Extern이기 때문에 클
 	if (isNewWarfieldServer())
 	{
 		g_pNewWarfield->DeleteMember(cn);
+	}
+	if (IsNeoWarfieldServer())
+	{
+		INT nCn = cn;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_DELETE_SQUAD_MEMBER, (LPVOID)&nCn);
 	}
 }
 
@@ -987,7 +1026,24 @@ bool InitNationSystem()
 		}
 
 	}
+	//< 1.4 패치 이후 새 전쟁터를 생성한다
+	if (IsNeoWarfieldServer())
+	{
+		if (NULL == g_pcWarfieldMgr)
+		{
+			g_pcWarfieldMgr = new CWarfieldMgr;
+			if (NULL == g_pcWarfieldMgr)
+			{
+				::JustMsg("g_pcWarfieldMgr Can not Create!!");
+				return FALSE;
+			}
+		}
 
+		INT nWarfieldNo = g_wMapServerPort - WP_BASE_PORT + 1;
+		if (FAILED(g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_CREATE_WARFIELD, (LPVOID)&nWarfieldNo)))
+			return FALSE;
+	}
+	//> 
 	//LoadAIConfig(); // 030919 HK YGI
 
 	if (!LoadNewWarMaxMin())
@@ -1032,6 +1088,26 @@ bool UpdateNationWarData()
 		}
 		g_pNewWarfield->Update();
 	}
+	if (IsNeoWarfieldServer() && (NULL != g_pcWarfieldMgr))
+	{
+		if (NULL == g_pcWarfieldMgr)
+		{
+			g_pcWarfieldMgr = new CWarfieldMgr;
+			if (NULL == g_pcWarfieldMgr)
+			{
+				::JustMsg("g_pcWarfieldMgr Can not Create!!");
+				return FALSE;
+			}
+
+			int nWarfieldNo = g_wMapServerPort - WP_BASE_PORT + 1;
+			if (FAILED(g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_CREATE_WARFIELD, (LPVOID)&nWarfieldNo)))
+			{
+				::JustMsg("g_pcWarfieldMgr Not Initialized..!!(Port:%d)", g_wMapServerPort);
+				return FALSE;
+			}
+		}
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_UPDATE);
+	}
 	return true;
 }
 
@@ -1071,76 +1147,142 @@ void SendCMD_CHECK_WARFIELD_NATION_MEMBERCOUNT(t_packet *p,t_connection c[],cons
 	if (WarfieldNo>=3)
 		SendCMD_REQUEST_DELIVERY(BASE_NEW_WARFIELD_PORT+WarfieldNo-3,&packet,c,cn);
 }
-
-void RecvCMD_NW_MAP_MOVE(t_packet *p,t_connection c[],const int cn)
+//< 몬스터 국가전 참여국가 판단
+extern void GetSumNationPoint(INT nSumPoint[NW_NATION_COUNT]);
+extern void CheckWarStartNation(INT nSumPoint[NW_NATION_COUNT], BOOL bJoinNation[NW_NATION_COUNT]);
+//> 
+void RecvCMD_NW_MAP_MOVE(t_packet* p, t_connection c[], const int cn)
 {
 	LPCHARLIST ch = ::CheckServerId(cn);
-	if(!ch){return;}
-	const int WarfieldNo=p->u.NationWar.NWMapMove.WarfieldNo;
+	if (!ch) { return; }
+	const int WarfieldNo = p->u.NationWar.NWMapMove.WarfieldNo;
 	int WarfieldStatus = 0;
 
-	if (isNationManageServer())	
+	if (isNationManageServer())
 	{
-		if (WarfieldNo>=0&&WarfieldNo<=2)
+		if (WarfieldNo >= 0 && WarfieldNo <= 2)
 		{
-			WarfieldStatus=g_pNation->GetWarfieldStatus(WarfieldNo);	// 전쟁터 상태를 얻어온다.
+			WarfieldStatus = g_pNation->GetWarfieldStatus(WarfieldNo);	// 전쟁터 상태를 얻어온다.
 		}
-		else if (WarfieldNo>=3)
+		else if (WarfieldNo >= 3)
 		{
-			WarfieldStatus=g_pNation->GetNewWarfieldStatus(WarfieldNo);	// 전쟁터 상태를 얻어온다.
+			//<지하 전쟁터의 추가로 설원전쟁터를 따로 처리
+			if (IsNeoWarfield(WarfieldNo))
+				WarfieldStatus = g_pNation->GetNewWarfieldStatus(WarfieldNo);
+			else
+				WarfieldStatus = g_pNation->GetNewWarfieldStatus(WarfieldNo - 3);	// 전쟁터 상태를 얻어온다.LTH-040207-KO 설원이라서 -3을 해줌
+			//> 
+			//WarfieldStatus=g_pNation->GetNewWarfieldStatus(WarfieldNo);	// 전쟁터 상태를 얻어온다.
 		}
 	}
-	else 
+	else
 	{
-		if (WarfieldNo>=0&&WarfieldNo<=2)
+		if (WarfieldNo >= 0 && WarfieldNo <= 2)
 		{
-			WarfieldStatus=g_pWarfieldStatus[WarfieldNo].Status;
+			WarfieldStatus = g_pWarfieldStatus[WarfieldNo].Status;
 		}
-		else if (WarfieldNo>=3)
+		else if (WarfieldNo >= 3)
 		{
 			/* // 030515 kyo
 			if (isNewWarfieldServer())	// 030509 kyo		//전쟁서버이면
 			{
-				WarfieldStatus=g_pNewWarfield->GetWarfieldStatus();				
+				WarfieldStatus=g_pNewWarfield->GetWarfieldStatus();
 			}
 			else
 			*/
-			WarfieldStatus=g_pNewWarfieldStatus[WarfieldNo-3];
+			if (IsNeoWarfield(WarfieldNo))
+				WarfieldStatus = g_naWarfieldState[WarfieldNo];
+			else
+				WarfieldStatus = g_pNewWarfieldStatus[WarfieldNo - 3];
+			//>
 		}
 	}
 
 	if (ch->GetLevel() <= ENABLE_NATIONWAR_LEVEL)
 	{	//< CSD-030806 : 전쟁터 이동 레벨제한
-		SendCMD_NW_MAP_MOVE_FAIL(c,cn,1); 
-		return; 
+		SendCMD_NW_MAP_MOVE_FAIL(c, cn, 1);
+		return;
 	}	//> CSD-030806
 
-	if (WarfieldStatus!=NW_WAR) {SendCMD_NW_MAP_MOVE_FAIL(c,cn,4); return; }	// 전쟁 준비기간이 아니면
+	if (WarfieldStatus != NW_WAR) { SendCMD_NW_MAP_MOVE_FAIL(c, cn, 4); return; }	// 전쟁 준비기간이 아니면
 
-	if (WarfieldNo>=0&&WarfieldNo<=2)
+	if (WarfieldNo >= 0 && WarfieldNo <= 2)
 	{
-		if (ch->name_status.nation!=NW_YL)
+		if (ch->name_status.nation != NW_YL)
 		{
 			if (!ch->IsReporter())											// 리포터가 아니면
 			{
 				if (!ch->NWCharacter.SquadNo)										//부대번호가 없다면
-				{ 
-					if (!ch->NWCharacter.isCommander) {SendCMD_NW_MAP_MOVE_FAIL(c,cn,2); return; }	// 사령관리 아니라면 리턴
+				{
+					if (!ch->NWCharacter.isCommander) { SendCMD_NW_MAP_MOVE_FAIL(c, cn, 2); return; }	// 사령관리 아니라면 리턴
 				}
 			}
 		}  //조건 검사가 끝났다.
 	}
 	else
-	if (WarfieldNo>=3)
-	{
-		if (ch->GetLevel() < MoveLevelMin[WarfieldNo - 3] || ch->GetLevel() > MoveLevelMax[WarfieldNo - 3])
-		{	//< CSD-030806
-			SendCMD_NW_MAP_MOVE_FAIL(c,cn,1); 
-			return;
-		}	//> CSD-030806
-	}
+		if (WarfieldNo >= 3)
+		{
+			//< ch->GetLevel()의 잦은 호출을 막기 위해 변수로 대체했다
+			INT nCharacterLv = ch->GetLevel();
+			if (IsNeoWarfield(WarfieldNo))
+			{
+				// 새전쟁터중 설원전쟁터가 아니면 정보 전달자로 부터 제한사항을 받는다
+				//< 맵 이동 레벨제한
+				CMapSetting cMapSet = g_pcWarfieldInfo->GetMapSetting(WarfieldNo);
+				if ((nCharacterLv < cMapSet.m_nMoveLevelMin) || (nCharacterLv > cMapSet.m_nMoveLevelMax))
+				{
+					::SendCMD_NW_MAP_MOVE_FAIL(c, cn, 1);
+					return;
+				}
+				//> 
 
-	SendCMD_CHECK_WARFIELD_NATION_MEMBERCOUNT(p,c,cn);
+				//< 전쟁 참여 가능국가만 이동을 허락한다.
+				int aSumNationPoint[NW_NATION_COUNT] = { 0, };
+				::GetSumNationPoint(aSumNationPoint);
+				::CheckWarStartNation(aSumNationPoint, g_aJoinNation);
+				INT nNationId = 0;
+				switch (ch->name_status.nation)
+				{
+				case NW_BY:	nNationId = 0; break;
+				case NW_ZY: nNationId = 1; break;
+				case NW_YL: nNationId = 2; break;
+				}
+				if (FALSE == g_aJoinNation[nNationId])
+				{
+					::SendCMD_NW_MAP_MOVE_FAIL(c, cn, 6);
+					return;
+				}
+				//>
+
+				//< 지하전쟁터는 자동으로 부대가 지정된다
+				CSoldierSet cSoldier = g_pcWarfieldInfo->GetSoldierSet(WarfieldNo);
+				INT nSquadNo = -1;
+				INT nI;
+				for (nI = 0; nI < MAX_SQUAD; ++nI)
+				{
+					if ((nCharacterLv >= cSoldier.m_tagaSquad[nI].nLevelMin) && \
+						(nCharacterLv <= cSoldier.m_tagaSquad[nI].nLevelMax))
+						break;
+				}
+				nSquadNo = nI;
+				t_packet* pac = p;
+				pac->u.NationWar.NWMapMove.SquadNo = nSquadNo;
+				p = pac;
+				c[cn].chrlst.NWCharacter.SquadNo = nSquadNo;
+				//> 
+
+				//< 1.4 지하전쟁터는 국가인원이 아닌 부대 인원이 제한이다
+
+				if (ch->GetLevel() < MoveLevelMin[WarfieldNo - 3] || ch->GetLevel() > MoveLevelMax[WarfieldNo - 3])
+				{	//< CSD-030806
+					SendCMD_NW_MAP_MOVE_FAIL(c, cn, 1);
+					return;
+				}	//> CSD-030806
+			}
+
+			SendCMD_CHECK_WARFIELD_NATION_MEMBERCOUNT(p, c, cn);
+
+		}
 }
 
 void CallNWMapMove(const int WarfieldNo,t_connection c[],const int cn)  //클라이언트의 인터페이스 맵이동 // 011217 LTS
@@ -1153,7 +1295,10 @@ void CallNWMapMove(const int WarfieldNo,t_connection c[],const int cn)  //클라이
 			WarfieldStatus=g_pNation->GetWarfieldStatus(WarfieldNo);	// 전쟁터 상태를 얻어온다.
 		else
 		if (WarfieldNo>=3)
-			WarfieldStatus=g_pNation->GetNewWarfieldStatus(WarfieldNo-3);	// 전쟁터 상태를 얻어온다.
+			if (IsNeoWarfield(WarfieldNo))
+				WarfieldStatus = g_pNation->GetNewWarfieldStatus(WarfieldNo);
+			else
+				WarfieldStatus = g_pNation->GetNewWarfieldStatus(WarfieldNo - 3);	// 전쟁터 상태를 얻어온다.
 
 	}
 	else 
@@ -1170,7 +1315,12 @@ void CallNWMapMove(const int WarfieldNo,t_connection c[],const int cn)  //클라이
 			}
 			else
 			*/
-			WarfieldStatus=g_pNewWarfieldStatus[WarfieldNo-3];
+			//< 지하 전쟁터의 추가로 설원전쟁터 따로 처리
+			if (IsNeoWarfield(WarfieldNo))
+				WarfieldStatus = g_naWarfieldState[WarfieldNo];
+			else
+				WarfieldStatus = g_pNewWarfieldStatus[WarfieldNo - 3];
+			//> 
 				
 		}
 	}
@@ -1194,7 +1344,13 @@ void CallNWMapMove(const int WarfieldNo,t_connection c[],const int cn)  //클라이
 			case NW_BY : MapMove(cn,tempMapName,NEW_BYPoint.x,NEW_BYPoint.y); break;
 			case NW_ZY : MapMove(cn,tempMapName,NEW_ZYPoint.x,NEW_ZYPoint.y); break;
 			}*/
-			SendCMD_NW_MAP_MOVE_FAIL(c,cn,3);	// 011213 LTS
+		
+			//< 1.4 패치 이후엔 전쟁상황이 아니면 다음 메시지를 띄운다
+			if (IsNeoWarfield(WarfieldNo))
+				SendCMD_NW_MAP_MOVE_FAIL(c, cn, 4);	// 다음 전쟁을 위해 방어 준비 중이므로 출입이 불가능합니다.
+			else
+				SendCMD_NW_MAP_MOVE_FAIL(c, cn, 3);
+			//>
 		}
 		else
 		{
@@ -1208,15 +1364,28 @@ void CallNWMapMove(const int WarfieldNo,t_connection c[],const int cn)  //클라이
 	}
 	else
 	{
-		if (WarfieldNo>=3)
+		if (WarfieldNo >= 3)
 		{
-			int Nation=connections[cn].chrlst.name_status.nation;
-			if (Nation==NW_YL)
-				Nation=connections[cn].chrlst.NWCharacter.YL_JoinNation;
-			switch(Nation)
+			//< 신규전쟁터중 설원전쟁터만 따로 처리
+			if (IsNeoWarfield(WarfieldNo))
 			{
-			case NW_BY : MapMove(cn,tempMapName,NEW_BYPoint.x,NEW_BYPoint.y); break;
-			case NW_ZY : MapMove(cn,tempMapName,NEW_ZYPoint.x,NEW_ZYPoint.y); break;
+				INT nSquadNo = connections[cn].chrlst.NWCharacter.SquadNo;
+				CSoldierSet cSoldier = g_pcWarfieldInfo->GetSoldierSet(WarfieldNo);
+				POINT xyTemp = { 0, 0 };
+
+				xyTemp = cSoldier.m_tagaSquad[nSquadNo].xyStartingPoint;
+				MapMove(cn, tempMapName, xyTemp.x, xyTemp.y);
+			}
+			else
+			{
+				int Nation = connections[cn].chrlst.name_status.nation;
+				if (Nation == NW_YL)
+					Nation = connections[cn].chrlst.NWCharacter.YL_JoinNation;
+				switch (Nation)
+				{
+				case NW_BY: MapMove(cn, tempMapName, NEW_BYPoint.x, NEW_BYPoint.y); break;
+				case NW_ZY: MapMove(cn, tempMapName, NEW_ZYPoint.x, NEW_ZYPoint.y); break;
+				}
 			}
 		}
 		else
@@ -2677,7 +2846,30 @@ void ProcessPeace(const int UserNation,t_packet* ReturnPacket)			// 011025 LTS
 		ReturnPacket->u.NationWar.NoticeWarPeace.SOpenWarfieldNo=SWarfieldNo;
 	}
 }
-
+//void cNation::SetRemainTime(int WarfieldNo, DWORD RemainTime)
+//{
+//	/*if (WarfieldNo >= 0 && WarfieldNo <= 2)
+//		Warfield[WarfieldNo].SetRemainTime(RemainTime);
+//	else
+//		if (WarfieldNo >= 3)
+//			m_NewWarfieldRemainTime[WarfieldNo - 3] = RemainTime;*/
+//	if (WarfieldNo >= 0 && WarfieldNo <= 2)
+//		Warfield[WarfieldNo].SetRemainTime(RemainTime);
+//	else
+//		if (WarfieldNo >= 3)
+//		{
+//			if (IsNeoWarfield(WarfieldNo))
+//			{	//< m_dwWarRemainTime이 세팅되기도 전에 CMD_SET_REMAIN_TIME을 받아 세팅하려 했다.
+//				if (NULL != m_dwWarRemainTime)
+//					m_dwWarRemainTime[WarfieldNo] = RemainTime;
+//			}
+//			else
+//				m_NewWarfieldRemainTime[WarfieldNo - 3] = RemainTime;
+//		}
+//	if ((RemainTime % 600) == 0)
+//		g_pLogManager->SaveLogNeoNationWar(NNT_TIME_INFO, "[Nation Manager] [WarfieldNo] = %d [Remain Time] = %ld", \
+//			WarfieldNo, RemainTime);
+//}
 void ProcessWarControl(t_packet* ReceivedPacket,t_packet* ReturnPacket)
 {
 	if (!isNationWarfieldServer()) 
@@ -2753,7 +2945,53 @@ void ProcessWarLoopTime(t_packet* ReceivedPacket,t_packet* SendPacket)
 		SendPacket->h.header.size=sizeof(t_WarLoopTime);*/
 	}
 }
+//< 부대 인원수 체크
+void ProcessSquadMemberCount(t_packet* ReceivedPacket, t_packet* SendPacket)
+{
+	if (IsNeoWarfieldServer())
+	{
+		INT nSquadNo = (INT)(ReceivedPacket->u.NationWar.CheckSquadMemberCount.cSquad);
+		INT nWarfieldNo = (INT)(ReceivedPacket->u.NationWar.CheckSquadMemberCount.cWarfieldNo);
+		tagSquadCount tSquadCount;
+		tSquadCount.nSquadNo = nSquadNo;	// 일단 현재 맴버수 체크에 부대번호를 넣고
+		// 해당 부대번호의 인원수를 구조체에 받아온다
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_SQUAD_MEMBER_COUNT, (LPVOID)&tSquadCount);
+		INT nCurrentSquadMemberCount = tSquadCount.nCurrentSquadMemberCount;
+		CSoldierSet cSoldier = g_pcWarfieldInfo->GetSoldierSet(nWarfieldNo);
+		if (nCurrentSquadMemberCount >= cSoldier.m_tagaSquad[nSquadNo].nPersonMax)
+		{
+			SendPacket->h.header.type = 26501;
+			SendPacket->u.NationWar.CheckSquadMemberCountR.cResult = FALSE;
+			SendPacket->u.NationWar.CheckSquadMemberCountR.cWarfieldNo = nWarfieldNo;
+			SendPacket->h.header.size = sizeof(t_CheckSquadMemberCountR);
+		}
+		else
+		{
+			//< 전쟁시작후 30분이 지났다면 이동 불가
+			__int64 n64RemainTime;
+			g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_REMAINTIME, (LPVOID)&n64RemainTime);
+			INT nIndex = g_pcWarfieldInfo->GetThisWarIndex(nWarfieldNo, g_dwCurrWeekElapsedSec);
+			CWarTimeInfo cWarTime = g_pcWarfieldInfo->GetWarTimeInfo(nWarfieldNo, nIndex);
+			DWORD dwTemp = cWarTime.m_dwWarTime - n64RemainTime;
+			INT nStatus;
+			g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nStatus);
 
+			SendPacket->h.header.type = 26501;
+			SendPacket->u.NationWar.CheckSquadMemberCountR.cWarfieldNo = nWarfieldNo;
+			//< 지하 전쟁터 이동 제한 시간을 Mapserverconfig.ini에서 읽어와 비교
+			CMapSetting cMapSetting = g_pcWarfieldInfo->GetMapSetting(nWarfieldNo);
+			int nLimitTime = cMapSetting.m_nUserEntranceLimitTime;
+			if ((nStatus != NW_WAR) || (dwTemp > nLimitTime))
+				SendPacket->u.NationWar.CheckSquadMemberCountR.cResult = FALSE;
+			else
+				SendPacket->u.NationWar.CheckSquadMemberCountR.cResult = TRUE;
+			//> 
+
+			SendPacket->h.header.size = sizeof(t_CheckSquadMemberCountR);
+		}
+	}
+}
+//>
 void ProcessNationMemberCount(t_packet* ReceivedPacket,t_packet* SendPacket)
 {
 	int Nation=ReceivedPacket->u.NationWar.CheckNationMemberCount.Nation;
@@ -2811,20 +3049,36 @@ void ProcessNewWarfieldStatus(t_packet* ReceivedPacket,t_packet* SendPacket)
 
 void ProcessNewWarfieldData(t_packet* ReceivedPacket,t_packet* SendPacket)
 {
-	CGuardStone* lpGuard;
-	CTeam* lpTeam;
-	SendPacket->h.header.type=CMD_ANSWER_NEW_WARFIELD_DATA;
+	//< 새전쟁터에서 설원전쟁터를 제외하고 다른 패킷구조체를 채워 보낸다
+	INT nWarfieldNo = ReceivedPacket->u.NationWar.CommonDataC.Data;
+	if (IsNeoWarfield(nWarfieldNo))
+	{
+		SendPacket->h.header.type = CMD_ANSWER_NEW_WARFIELD_DATA;
+
+		NEO_WARFIELD_DATA tagWarfieldData;
+		::UpdateWarTime();
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELDDATA, (LPVOID)&tagWarfieldData);
+		SendPacket->u.NationWar.NeoWarfieldData = tagWarfieldData;
+		SendPacket->h.header.size = sizeof(NEO_WARFIELD_DATA);
+	}
+	else
+	{
+		CGuardStone* lpGuard;
+		CTeam* lpTeam;
+		SendPacket->h.header.type = CMD_ANSWER_NEW_WARFIELD_DATA;
+
+		SendPacket->u.NationWar.NWarfieldData1.RemainTime = g_pNewWarfield->GetRemainTime();
+		lpGuard = g_pNewWarfield->GetGuard(0);
+		lpGuard->GetStatus((char*)&SendPacket->u.NationWar.NWarfieldData1.GuardStatus[0]);
+		lpGuard = g_pNewWarfield->GetGuard(1);
+		lpGuard->GetStatus((char*)&SendPacket->u.NationWar.NWarfieldData1.GuardStatus[1]);
+		lpTeam = g_pNewWarfield->GetTeam(0);
+		SendPacket->u.NationWar.NWarfieldData1.TeamCount[0] = lpTeam->GetTeamCount();
+		lpTeam = g_pNewWarfield->GetTeam(1);
+		SendPacket->u.NationWar.NWarfieldData1.TeamCount[1] = lpTeam->GetTeamCount();
+		SendPacket->h.header.size = sizeof(NEW_WARFIELD_DATA1);
+	}
 	
-	SendPacket->u.NationWar.NWarfieldData1.RemainTime=g_pNewWarfield->GetRemainTime();
-	lpGuard=g_pNewWarfield->GetGuard(0);
-	lpGuard->GetStatus((char*)&SendPacket->u.NationWar.NWarfieldData1.GuardStatus[0]);
-	lpGuard=g_pNewWarfield->GetGuard(1);
-	lpGuard->GetStatus((char*)&SendPacket->u.NationWar.NWarfieldData1.GuardStatus[1]);
-	lpTeam=g_pNewWarfield->GetTeam(0);
-	SendPacket->u.NationWar.NWarfieldData1.TeamCount[0]=lpTeam->GetTeamCount();
-	lpTeam=g_pNewWarfield->GetTeam(1);
-	SendPacket->u.NationWar.NWarfieldData1.TeamCount[1]=lpTeam->GetTeamCount();
-	SendPacket->h.header.size=sizeof(NEW_WARFIELD_DATA1);
 }
 
 void RecvCMD_REQUEST_DELIVERY(t_packet *p, t_connection c[], const int cn)
@@ -3560,6 +3814,7 @@ void RecvCMD_SQUAD_CHAT(t_packet *p, t_connection c[], const int cn )
 	t_packet packet;
 
 	if (!isNationWarfieldServer()&&!isNewWarfieldServer()) return;
+	if (!IsNeoWarfieldServer()) return;
 	CHARLIST *ch = CheckServerId(cn);
 	if(!ch)
 	{
@@ -3751,6 +4006,15 @@ void RecvCMD_SQUAD_CHAT(t_packet *p, t_connection c[], const int cn )
 	}
 	else
 	{
+		if (IsNeoWarfieldServer())
+		{
+			tagSendSquadChat tSendSquadChat;
+			tSendSquadChat.lpChar = &connections[cn].chrlst;
+			tSendSquadChat.p = &packet;
+			g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_SEND_SQUAD_CHAT, (LPVOID)&tSendSquadChat);
+		}
+		else
+			g_pNewWarfield->SendSquadChat(&connections[cn].chrlst, &packet);
 		g_pNewWarfield->SendSquadChat(&connections[cn].chrlst,&packet);
 		
 	}
@@ -4173,12 +4437,22 @@ void RecvCMD_ANSWER_SUBSTRACT_MONEY( t_packet *p, t_connection c[], const int cn
 
 void RecvCMD_REQUEST_WAR_GIVE_LIFE( t_packet *p, t_connection c[], const int cn )			// 011015 LTS
 {
-	if (!isNationWarfieldServer()&&!isNewWarfieldServer()) return;
+	//< 1.4 Patch. 신 전쟁터 서버 추가!!
+	if (!isNationWarfieldServer() && !isNewWarfieldServer() && !IsNeoWarfieldServer()) return;
+	//> 
 	if (isNationWarfieldServer())
 		if (g_pWarfield->GetStatus()!=NW_WAR) return;
 	if (isNewWarfieldServer())
 		if (g_pNewWarfield->GetWarfieldStatus()!=NW_WAR) return;
-
+	//< 1.4 패치 신규국가전
+	if (IsNeoWarfieldServer())
+	{
+		INT nState = NW_PEACE;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nState);
+		if (nState != (INT)NW_WAR)
+			return;
+	}
+	//> 
 	if (c[cn].chrlst.Hp>0) return;
 
 	if (isNationWarfieldServer())
@@ -4196,8 +4470,20 @@ void RecvCMD_REQUEST_WAR_GIVE_LIFE( t_packet *p, t_connection c[], const int cn 
 	}
 	else
 	{
-		POINT MovePoint=g_pNewWarfield->GetLivePoint(&c[cn].chrlst);
-		MovePc(cn,MovePoint.x,MovePoint.y);
+		if (IsNeoWarfieldServer())
+		{
+			// 구조체를 만들어 일단 캐릭 정보 실어보내고 같은 구조체로 포인트를 받는다
+			tagGetLivePoint tGetLivePoint;
+			tGetLivePoint.lpChar = &c[cn].chrlst;
+			g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_LIVE_POINT, (LPVOID)&tGetLivePoint);
+			LPPOINT lpPoint = tGetLivePoint.lpPoint;
+			::MovePc(cn, lpPoint->x, lpPoint->y);
+		}
+		else
+		{
+			POINT MovePoint = g_pNewWarfield->GetLivePoint(&c[cn].chrlst);
+			MovePc(cn, MovePoint.x, MovePoint.y);
+		};
 	}
 
 	SkillMgr.CharacterToAlive(&c[cn].chrlst, 1);// 살려준다.//020501 lsw
@@ -4311,8 +4597,20 @@ void RecvCMD_REQUEST_NOTICE(t_packet *p, t_connection c[], const int cn )
 		int Nation=c[cn].chrlst.name_status.nation;
 		if (CheckWarLoopProcess())	//전쟁루프가 진행중이면 평화상태가 아니다.
 		{
-			int WarfieldNo=ReturnWarfieldNoByWarLoopProcess();
-			int Status=g_pNation->GetWarfieldStatus(WarfieldNo);
+			int WarfieldNo = ReturnWarfieldNoByWarLoopProcess();
+			int Status;
+			if (WarfieldNo >= 0 && WarfieldNo <= 2)
+				Status = g_pNation->GetWarfieldStatus(WarfieldNo);
+			else
+				if (WarfieldNo >= 3)
+				{
+					if (IsNeoWarfield(WarfieldNo))
+						Status = g_pNation->GetNewWarfieldStatus(WarfieldNo);
+					else
+						Status = g_pNation->GetNewWarfieldStatus(WarfieldNo - 3);
+				}
+			///int WarfieldNo=ReturnWarfieldNoByWarLoopProcess();
+			//int Status=g_pNation->GetWarfieldStatus(WarfieldNo);
 			switch(Status)
 			{
 			case 2 : ProcessJoinVote(WarfieldNo,Nation,&SendPacket); break;
@@ -4456,18 +4754,48 @@ void RecvCMD_START_WAR_LOOP(t_packet *p, t_connection c[], const int cn )		// LT
 
 void RecvCMD_NWARFIELD_START_WAR(t_packet *p, t_connection c[], const int cn )		// New Warfield Start Packet
 {	//< CSD-CN-031213
-	if (isNewWarfieldServer())			//전쟁서버이면
+	//if (isNewWarfieldServer())			//전쟁서버이면
+	//{	// 전쟁관련 초기화를 한다.
+	//	g_pNewWarfield->SetWarfieldStatus(NW_WAR);									// War Start
+	//}
+	//
+	//g_pNewWarfieldStatus[p->u.NationWar.NewWarStart.WarfieldNo]=NW_WAR;
+	//g_pUserManager->SendPacket(p); 
+	if (isNewWarfieldServer() && (WI_SNOWY_WARFIELD == p->u.NationWar.NewWarStart.WarfieldNo + 3))			//전쟁서버이면
 	{	// 전쟁관련 초기화를 한다.
 		g_pNewWarfield->SetWarfieldStatus(NW_WAR);									// War Start
+		g_pNewWarfieldStatus[p->u.NationWar.NewWarStart.WarfieldNo] = NW_WAR;
 	}
-	
-	g_pNewWarfieldStatus[p->u.NationWar.NewWarStart.WarfieldNo]=NW_WAR;
-	g_pUserManager->SendPacket(p); 
+	else if (IsNeoWarfieldServer() && IsNeoWarfield(p->u.NationWar.NewWarStart.WarfieldNo))
+	{	// 새로운 전쟁터 전쟁 시작 메시지 중에 설원전쟁터와 구분하여 상태 변환
+		INT nState = NW_WAR;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_SET_WARFIELD_STATE, (LPVOID)&nState);
+		g_naWarfieldState[p->u.NationWar.NewWarStart.WarfieldNo] = NW_WAR;
+		g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "[Nation Manager] Warfield No. = %d, Change State = NW_WAR", p->u.NationWar.NewWarStart.WarfieldNo);
+	}
+
+	g_pUserManager->SendPacket(p);
 }	//> CSD-CN-031213
 
 void SendTileDontInfo(t_connection c[], const int cn )
 {
-	if (!isNewWarfieldServer())
+	if (!isNewWarfieldServer() && !IsNeoWarfieldServer())
+		return;
+
+	t_packet packet;
+	packet.h.header.type = CMD_ANSWER_NEW_WARFIELD_TILE_DONT;
+	if (IsNeoWarfieldServer())
+	{
+		DONT_DATA DontData;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_DONT_DATA, (LPVOID)&DontData);
+		packet.u.NationWar.DontData = DontData;
+	}
+	else
+		g_pNewWarfield->GetTileDont(&packet.u.NationWar.DontData);
+	packet.h.header.size = sizeof(DONT_DATA);
+
+	QueuePacket(c, cn, &packet, 1);
+	/*if (!isNewWarfieldServer())
 		return;
 
 	t_packet packet;
@@ -4475,7 +4803,7 @@ void SendTileDontInfo(t_connection c[], const int cn )
 	g_pNewWarfield->GetTileDont(&packet.u.NationWar.DontData);
 	packet.h.header.size=sizeof(DONT_DATA);
 
-	QueuePacket(c,cn,&packet,1);
+	QueuePacket(c,cn,&packet,1);*/
 }
 
 void RecvCMD_REQUEST_NEW_WARFIELD_TILE_DONT(t_packet *p, t_connection c[], const int cn )
@@ -4483,26 +4811,62 @@ void RecvCMD_REQUEST_NEW_WARFIELD_TILE_DONT(t_packet *p, t_connection c[], const
 	MyLog(0, "Tile Dont Request");
 
 	SendTileDontInfo(c,cn);
-	// 부대에 조인시킨다.
-	// 전쟁이 사작했다는 메세지를 보내준다.
-	if (g_pNewWarfield->GetWarfieldStatus() == NW_WAR)
+	if (IsNeoWarfieldServer())
 	{
-		//이동했는데..전쟁중이면.. 전쟁이 시작되었다고 알림..(공격자, 맵이동 방어자)
-		SendWarBeginEndMessage2Client(1, c, cn); 
-		
-		switch (c[cn].chrlst.name_status.nation)
+		INT nState = NW_PEACE;
+
+		//< 다른전쟁에 영향 안미치게 수정
+			//< 5300 크래쉬 버그 수정(전쟁터관련맵이 아닌데, 잘못된 클라이언트 메세지를 받아서, crash)
+		if (NULL == g_pcWarfieldMgr)
 		{
-		case NW_BY:
+			return;
+		}
+		//>
+	//>
+
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_GET_WARFIELD_STATE, (LPVOID)&nState);
+		if (nState == NW_WAR)
+		{
+			//이동했는데..전쟁중이면.. 전쟁이 시작되었다고 알림..(공격자, 맵이동 방어자)
+			//  팀이 나뉘게 되면 팀정보도 메시지에 실어보내자
+			//<  운영자 캐릭은 산타옷 그대로...
+			if (!connections[cn].chrlst.IsCounselor())
+				SendWarBeginEndMessage2Client(1, c, cn);
+			//> 
+			g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_INSERT_SQUAD_MEMBER, (LPVOID)&cn);
+		}
+	}
+	else
+	{
+		// 부대에 조인시킨다.
+		// 전쟁이 사작했다는 메세지를 보내준다.
+
+		// 다른전쟁에 영향 안미치게 수정
+		//< 5300 크래쉬 버그 수정(전쟁터관련맵이 아닌데, 잘못된 클라이언트 메세지를 받아서, crash)
+		if (NULL == g_pNewWarfield)
+		{
+			return;
+		}
+		//
+
+		if (g_pNewWarfield->GetWarfieldStatus() == NW_WAR)
+		{
+			//이동했는데..전쟁중이면.. 전쟁이 시작되었다고 알림..(공격자, 맵이동 방어자)
+			SendWarBeginEndMessage2Client(1, c, cn);
+
+			switch (c[cn].chrlst.name_status.nation)
+			{
+			case NW_BY:
 			{
 				g_pNewWarfield->GetTeam(0)->InsertTeamMember(cn);
 				break;
 			}
-		case NW_ZY:
+			case NW_ZY:
 			{
 				g_pNewWarfield->GetTeam(1)->InsertTeamMember(cn);
 				break;
 			}
-		case NW_YL:
+			case NW_YL:
 			{
 				if (c[cn].chrlst.NWCharacter.YL_JoinNation == NW_BY)
 				{
@@ -4515,30 +4879,67 @@ void RecvCMD_REQUEST_NEW_WARFIELD_TILE_DONT(t_packet *p, t_connection c[], const
 
 				break;
 			}
+			}
 		}
 	}
 }
 
 void RecvCMD_NWARFIELD_END_WAR(t_packet *p, t_connection c[], const int cn )
 {	//< CSD-CN-031213
-	g_pNewWarfieldStatus[p->u.NationWar.CommonDataC.Data] = NW_PEACE;
-	g_pUserManager->SendPacket(p); 
+	/*g_pNewWarfieldStatus[p->u.NationWar.CommonDataC.Data] = NW_PEACE;
+	g_pUserManager->SendPacket(p); */
+	//< 새 전쟁터중에 설원전쟁터가 아니면 맵서버 상태 변환하고 전역 상태 변수도 구분하여 변환
+	if (IsNeoWarfield(p->u.NationWar.CommonDataC.Data))
+	{
+		// 1.4 Patch. 신 전쟁터는 전쟁이 끝나면 듀얼5차 퀘스트를 위해 비밀지역 오픈 메시지를 보낸다.
+		g_naWarfieldState[p->u.NationWar.CommonDataC.Data] = NW_SOPEN;
+		g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "[Nation Manager] Warfield No. = %d, Change State = NW_SOPEN", p->u.NationWar.CommonDataC.Data);
+		//< 국가전 참가 자격도 초기화한다
+		INT nI;
+		for (nI = 0; nI < NW_NATION_COUNT; ++nI)
+			g_aJoinNation[nI] = FALSE;
+		//> 
+	}
+	else
+	{
+		g_pNewWarfieldStatus[p->u.NationWar.CommonDataC.Data] = NW_PEACE;
+	}
+	//> 
+
+	g_pUserManager->SendPacket(p);
 }	//> CSD-CN-031213
 
 void RecvCMD_CHECK_DEFEAT( t_packet *p, t_connection c[], const int cn )
 {
-	if (!isNewWarfieldServer())
+	if (!isNewWarfieldServer() && !IsNeoWarfieldServer())
 		return;
 
-	g_pNewWarfield->CheckAndKickUser(cn);
+	if (IsNeoWarfieldServer())
+	{
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_CHECK_AND_KICK_USER, (LPVOID)&cn);
+	}
+	else
+		g_pNewWarfield->CheckAndKickUser(cn);
+	//if (!isNewWarfieldServer())
+	//	return;
+
+	//g_pNewWarfield->CheckAndKickUser(cn);
 }
 
 void RecvCMD_LOOPTIME_CHANGE(t_packet *p, t_connection c[], const int cn )
 {
+	//if (isNationWarfieldServer())
+	//	g_pWarfield->LoopTimeChange(p);
+	//if (isNewWarfieldServer())
+	//	g_pNewWarfield->LoopTimeChange(p);
 	if (isNationWarfieldServer())
 		g_pWarfield->LoopTimeChange(p);
 	if (isNewWarfieldServer())
 		g_pNewWarfield->LoopTimeChange(p);
+	if (IsNeoWarfieldServer())
+	{
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_SET_LOOPTIME_CHANGE, (LPVOID)p);
+	}
 }
 
 void RecvCMD_WAR_RESULT( t_packet *p, t_connection c[], const int cn )
@@ -4548,9 +4949,30 @@ void RecvCMD_WAR_RESULT( t_packet *p, t_connection c[], const int cn )
 
 void RecvCMD_NWARFIELD_STATUS_CHANGE(t_packet *p, t_connection c[], const int cn )
 {
-	g_pNewWarfieldStatus[p->u.NationWar.WarfieldStatusChange.WarfieldNo]=p->u.NationWar.WarfieldStatusChange.Status;
+	//g_pNewWarfieldStatus[p->u.NationWar.WarfieldStatusChange.WarfieldNo]=p->u.NationWar.WarfieldStatusChange.Status;
+	//if (isNationManageServer())
+	//	g_pNation->SetNewWarfieldStatus(p->u.NationWar.WarfieldStatusChange.WarfieldNo,p->u.NationWar.WarfieldStatusChange.Status);
+	//< 새로운 전쟁터중에 설원전쟁터를 제외하고 지하 전쟁터와 같은 나머지 전쟁터의 상태를 따로 변환한다
+	if (IsNeoWarfield(p->u.NationWar.WarfieldStatusChange.WarfieldNo))
+	{
+		g_naWarfieldState[p->u.NationWar.WarfieldStatusChange.WarfieldNo] = p->u.NationWar.WarfieldStatusChange.Status;
+		g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "[Nation Manager] Warfield No. = %d, Change State = %d", \
+			p->u.NationWar.WarfieldStatusChange.WarfieldNo, p->u.NationWar.WarfieldStatusChange.Status);
+	}
+	else
+		g_pNewWarfieldStatus[p->u.NationWar.WarfieldStatusChange.WarfieldNo] = p->u.NationWar.WarfieldStatusChange.Status;
+	//> 
+
 	if (isNationManageServer())
-		g_pNation->SetNewWarfieldStatus(p->u.NationWar.WarfieldStatusChange.WarfieldNo,p->u.NationWar.WarfieldStatusChange.Status);
+	{
+		//5250 crash (몬스터전쟁후, NW_OPEN,비밀지역오픈때, crash되는것으로 확인됨)
+		//예상부분: 국지전,몬스터 전쟁터에서 동일한 방식으로 이용(국지전에서 사용하던 로직을 몬스터전쟁터에서 그대로 이용함으로 문제 생겼다고 예상됨)
+		//아래부분은 국지전 처리하는 부분으로, 몬스터 전쟁터에서는 호출될 필요없는 것으로 예상 (테스트 필요)
+		if (!IsBadReadPtr(g_pNation, sizeof(cNation)))
+		{
+			g_pNation->SetNewWarfieldStatus(p->u.NationWar.WarfieldStatusChange.WarfieldNo, p->u.NationWar.WarfieldStatusChange.Status);
+		}
+	}
 }
 
 void RecvCMD_REQUEST_NEW_WARFIELD_STATUS(t_packet *p, t_connection c[], const int cn )
@@ -4567,14 +4989,27 @@ void RecvCMD_REQUEST_NEW_WARFIELD_STATUS(t_packet *p, t_connection c[], const in
 
 void RecvCMD_REQUEST_NEW_WARFIELD_DATA(t_packet *p, t_connection c[], const int cn )
 {
-	if (isNewWarfieldServer())
-	{
+	if (isNewWarfieldServer() || IsNeoWarfieldServer())
+	{	//< 1.4 패치 신규국가전도 같은곳에서 처리
 		t_packet packet;
-		ProcessNewWarfieldData(p,&packet);
-		QueuePacket(c,cn,&packet,1);
-	}
+		ProcessNewWarfieldData(p, &packet);
+		QueuePacket(c, cn, &packet, 1);
+	}	//>
 	else
-		SendCMD_REQUEST_DELIVERY(BASE_NEW_WARFIELD_PORT+p->u.NationWar.CommonDataC.Data-3,p,c,cn);
+	{	//< 전쟁 번호를 다루는 것이 다르기때문에 구별한다
+		if (p->u.NationWar.CommonDataC.Data == 3)	// 설원전쟁터 전쟁번호이면
+			SendCMD_REQUEST_DELIVERY(BASE_NEW_WARFIELD_PORT + p->u.NationWar.CommonDataC.Data - 3, p, c, cn);
+		else
+			SendCMD_REQUEST_DELIVERY(WP_BASE_PORT + p->u.NationWar.CommonDataC.Data - 1, p, c, cn);	// 5991 + 4 - 1 = 5994
+	}	//> 
+	//if (isNewWarfieldServer())
+	//{
+	//	t_packet packet;
+	//	ProcessNewWarfieldData(p,&packet);
+	//	QueuePacket(c,cn,&packet,1);
+	//}
+	//else
+	//	SendCMD_REQUEST_DELIVERY(BASE_NEW_WARFIELD_PORT+p->u.NationWar.CommonDataC.Data-3,p,c,cn);
 }
 
 void RecvCMD_WAR_YL_JOIN( t_packet *p, t_connection c[], const int cn )
@@ -7924,7 +8359,126 @@ void cNation::NewCheckAndActive(int Index)
 	SendPacket2Maps(&packet);									// 모든 맵에서 보낸다.
 }
 
+//<Hades War...
+VOID cNation::NeoCheckAndActive(INT nIndex)
+{
+	::UpdateWarTime();
 
+	INT nWarfieldNo = WP_HADES_WARFIELD - WP_BASE_PORT + 1;	// 전쟁터가 추가되면 eWARFIELD_PORT에 WP_MAX_PORT를 만들고 for루프를 돌며 체크
+	BYTE btDayOfWeek = (BYTE)(g_dwCurrWeekElapsedSec / 86400);	// 오늘 요일 (0 : Sunday ~ 6 : Saturday)
+	BYTE btHour = (BYTE)((g_dwCurrWeekElapsedSec % 86400) / 3600);		// 현재 몇시? (0 ~ 23시)
+	CWarTimeInfo cWarTime = g_pcWarfieldInfo->GetWarTimeInfo(nWarfieldNo, nIndex);
+	BYTE btStartDay = cWarTime.m_btStartDay;
+	BYTE btStartHour = cWarTime.m_btStartHour;
+
+	if ((btDayOfWeek != btStartDay) || (btHour != btStartHour))
+		return;
+
+	SERVER_DATA* pData = NULL;
+	pData = g_pServerTable->GetConnectedServerData((WORD)(nWarfieldNo + WP_BASE_PORT - 1));
+	if (NULL == pData)
+	{
+		::MyLog(LOG_FATAL, "SERVER NOT READY PORT : %d, Waitting Next DB Time", nWarfieldNo + WP_BASE_PORT - 1);
+		return;
+	}
+
+	if (CheckWarStart())
+	{
+		::MyLog(LOG_FATAL, "AllReady Start War!! Waitting Next DB Time!!");
+		return;
+	}
+
+	g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "Hades Warfield Start Nation War by DB");
+
+	t_packet packet;											// 시작하라고 패킷을 보낸다.
+
+	packet.h.header.type = CMD_NWARFIELD_START_WAR;
+	packet.u.NationWar.NewWarStart.WarfieldNo = nWarfieldNo;
+	packet.u.NationWar.NewWarStart.dwTerm = cWarTime.m_dwWarTime;
+	packet.u.NationWar.NewWarStart.btNationPoint = LIMITNATIONPOINT;
+	packet.h.header.size = sizeof(NEWWAR_START);
+
+	SendPacket2Maps(&packet);									// 모든 맵에서 보낸다.
+}
+//int cNation::GetSecretOpenedWarfieldNo()
+//{
+//	if (Warfield[0].CheckSecretPlaceOpen()) return true;
+//	if (Warfield[1].CheckSecretPlaceOpen()) return true;
+//	if (Warfield[2].CheckSecretPlaceOpen()) return true;
+//	if (m_NewWarfieldStatus[0] == NW_SOPEN) return true;
+//	if (g_naWarfieldState[WI_HADES_WARFIELD] == NW_SOPEN) return TRUE;
+//	return false;
+//}
+int cNation::GetSecretOpenedWarfieldNo()
+{
+	int nWarfieldNo = -1;
+	if (Warfield[0].CheckSecretPlaceOpen())
+	{
+		nWarfieldNo = 0;
+		return nWarfieldNo;
+	}
+	if (Warfield[1].CheckSecretPlaceOpen())
+	{
+		nWarfieldNo = 1;
+		return nWarfieldNo;
+	}
+	if (Warfield[2].CheckSecretPlaceOpen())
+	{
+		nWarfieldNo = 2;
+		return nWarfieldNo;
+	}
+	if (m_NewWarfieldStatus[0] == NW_SOPEN)
+	{
+		nWarfieldNo = 3;
+		return nWarfieldNo;
+	}
+	if (g_naWarfieldState[WI_HADES_WARFIELD] == NW_SOPEN)
+	{
+		nWarfieldNo = WI_HADES_WARFIELD;
+		return nWarfieldNo;
+	}
+
+	return nWarfieldNo;
+}
+void cNation::SetRemainTime(int WarfieldNo, DWORD RemainTime)
+{
+	if (WarfieldNo >= 0 && WarfieldNo <= 2)
+		Warfield[WarfieldNo].SetRemainTime(RemainTime);
+	else
+		if (WarfieldNo >= 3)
+		{
+			if (IsNeoWarfield(WarfieldNo))
+			{	//< m_dwWarRemainTime이 세팅되기도 전에 CMD_SET_REMAIN_TIME을 받아 세팅하려 했다.
+				if (NULL != m_dwWarRemainTime)
+					m_dwWarRemainTime[WarfieldNo] = RemainTime;
+			}
+			else
+				m_NewWarfieldRemainTime[WarfieldNo - 3] = RemainTime;
+		}
+	if ((RemainTime % 600) == 0)
+		g_pLogManager->SaveLogNeoNationWar(NNT_TIME_INFO, "[Nation Manager] [WarfieldNo] = %d [Remain Time] = %ld", \
+			WarfieldNo, RemainTime);
+}
+DWORD cNation::GetRemainTime(int WarfieldNo)
+{
+	switch (WarfieldNo) //워닝 제거
+	{
+	case 0:
+	case 1:
+	case 2:
+	{
+		return Warfield[WarfieldNo].GetRemainTime();
+	}break;
+	case 3:
+	{
+		return m_NewWarfieldRemainTime[WarfieldNo - 3];
+	}break;
+	case WI_HADES_WARFIELD:
+	default:
+		return m_dwWarRemainTime[WarfieldNo];
+	}
+	return 0;
+}
 void cNation::CheckStartWarfieldWar()
 {
 	static int oldHour=0;
@@ -8200,6 +8754,9 @@ bool cNation::LoadNewWarStartupData()				// LTS NEW_NATION_WAR
 	}
 
     SQLFreeStmt(hStmt,SQL_DROP);
+
+	// 전쟁 시간 제한 사항을 전역적으로 호출한다
+	//g_pcWarfieldInfo->LoadWarTimeInfo(WI_HADES_WARFIELD); hades load table reece commented out cause crashes map when trying to load from a invalid memory
 	return true;
 }	//> CSD-030804
 
@@ -8241,29 +8798,63 @@ bool cNation::CheckWarStart()
 		WarStart=true;
 	}
 
-
+	if (g_naWarfieldState[WI_HADES_WARFIELD] != NW_PEACE)
+		WarStart = TRUE;
 	return WarStart;
 }
 
 int cNation::GetNewWarfieldStatus(int Index)
 {
-	if (Index < 0 || Index >= MAX_NEW_WARFIELD)
+	//if (Index < 0 || Index >= MAX_NEW_WARFIELD)
+	//{
+	//	return 0;
+	//}
+	//return m_NewWarfieldStatus[Index];
+		//< 신규전쟁터중에 설원전쟁터만 따로 처리
+	if (IsNeoWarfield(Index))
+		return g_naWarfieldState[Index];
+	else
 	{
-		return 0;
+		if (Index < 0 || Index >= MAX_NEW_WARFIELD)
+		{
+			return 0;
+		}
+		return m_NewWarfieldStatus[Index];
 	}
-	return m_NewWarfieldStatus[Index];
 }
 
 void cNation::SetNewWarfieldStatus(int Index,int Status)
 {
-	if (Index<0||Index>=MAX_NEW_WARFIELD)
-		return;
-	m_NewWarfieldStatus[Index]=Status;
+	//if (Index<0||Index>=MAX_NEW_WARFIELD)
+	//	return;
+	//m_NewWarfieldStatus[Index]=Status;
+	//< 신규전쟁터중에 설원전쟁터만 따로 처리
+	if (IsNeoWarfield(Index))
+		g_naWarfieldState[Index] = Status;
+	else
+	{
+		if (Index < 0 || Index >= MAX_NEW_WARFIELD)
+			return;
+		m_NewWarfieldStatus[Index] = Status;
+	}
 }
 
 bool cNation::InitNewWarfield()
 {
-	m_NewWarfieldStatus[0]=NW_PEACE;
+	/*m_NewWarfieldStatus[0]=NW_PEACE;
+
+	return true;*/
+	m_NewWarfieldStatus[0] = NW_PEACE;
+	//<걍 전역으로 설정된 전쟁터 상태를 모두 평화 상태로 초기화 한다.
+	INT nI;
+	INT nEnd = (INT)WI_MAX_WARFIELD;
+	for (nI = 0; nI < nEnd; ++nI)
+	{
+		g_naWarfieldState[nI] = NW_PEACE;
+
+		g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "[Nation Manager] Warfield No. = %d, Change State = NW_PEACE", nI);
+	}
+
 
 	return true;
 }
@@ -8288,6 +8879,12 @@ void cNation::CheckAndSendWarStart(t_packet* p)
 			Status=m_NewWarfieldStatus[WarfieldNo-3];
 			Port=BASE_NEW_WARFIELD_PORT+WarfieldNo-3;
 			break;
+
+			//< 1.4 패치이후 모든 전쟁터를 여기에서 처리
+	case WI_HADES_WARFIELD:
+		Status = g_naWarfieldState[WarfieldNo];
+		Port = WP_BASE_PORT + WarfieldNo - 1;
+		break;
 	}
 
 	switch(Status)
@@ -8322,13 +8919,35 @@ void cNation::CheckAndSendWarStart(t_packet* p)
 			}
 			else
 			{
-				packet.h.header.type=CMD_NWARFIELD_START_WAR;
-				packet.u.NationWar.NewWarStart.WarfieldNo=WarfieldNo-3;
-				packet.u.NationWar.NewWarStart.LevelMin=MoveLevelMin[WarfieldNo-3];
-				packet.u.NationWar.NewWarStart.LevelMax=MoveLevelMax[WarfieldNo-3];
-				packet.h.header.size=sizeof(NEWWAR_START);
-				SendPacket2Maps(&packet);									// 모든 맵에서 보낸다.
-				m_NewWarfieldStatus[Port-BASE_NEW_WARFIELD_PORT]=NW_WAR;
+				//< 새 전쟁터중에 설원전쟁터만 따로 처리
+				if (IsNeoWarfield(WarfieldNo))
+				{
+					// 설원전쟁터와 같은 전쟁시작 메시지를 보낸다
+					packet.h.header.type = CMD_NWARFIELD_START_WAR;
+					packet.u.NationWar.NewWarStart.WarfieldNo = WarfieldNo;
+					::UpdateWarTime();
+					INT nIndex = g_pcWarfieldInfo->GetThisWarIndex(WarfieldNo, g_dwCurrWeekElapsedSec);
+					CWarTimeInfo cWarTime = g_pcWarfieldInfo->GetWarTimeInfo(WarfieldNo, nIndex);
+					packet.u.NationWar.NewWarStart.dwTerm = cWarTime.m_dwWarTime;
+					packet.u.NationWar.NewWarStart.btNationPoint = LIMITNATIONPOINT;
+					packet.h.header.size = sizeof(NEWWAR_START);
+					SendPacket2Maps(&packet);
+					g_naWarfieldState[WarfieldNo] = NW_WAR;
+					g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "[Nation Manager] Warfield No. = %d, Change State = NW_WAR", \
+						WarfieldNo);
+				}
+				else
+				{
+					packet.h.header.type = CMD_NWARFIELD_START_WAR;
+					packet.u.NationWar.NewWarStart.WarfieldNo = WarfieldNo - 3;
+					packet.u.NationWar.NewWarStart.LevelMin = MoveLevelMin[WarfieldNo - 3];
+					packet.u.NationWar.NewWarStart.LevelMax = MoveLevelMax[WarfieldNo - 3];
+					packet.h.header.size = sizeof(NEWWAR_START);
+					SendPacket2Maps(&packet);									// 모든 맵에서 보낸다.
+					m_NewWarfieldStatus[Port - BASE_NEW_WARFIELD_PORT] = NW_WAR;
+
+				}
+			
 			}
 			
 		}
@@ -8417,6 +9036,53 @@ void cNation::GetWarRemainTime(char* ReturnStr)
 				}
 			}
 
+	}
+}
+VOID cNation::GetNeoWarRemainTime(char* ReturnStr)
+{
+	::UpdateWarTime();
+	INT nHowManyTimesWeek = g_pcWarfieldInfo->GetHowManyTimesWeek();
+
+	INT nWarfieldNo = WP_HADES_WARFIELD - WP_BASE_PORT + 1;	// 전쟁터가 추가되면 eWARFIELD_PORT에 WP_MAX_PORT를 만들고 for루프를 돌며 체크
+	BYTE btDayOfWeek = (BYTE)(g_dwCurrWeekElapsedSec / 86400);	// 오늘 요일 (0 : Sunday ~ 6 : Saturday)
+	BYTE btHour = (BYTE)(g_dwCurrWeekElapsedSec % 86400);		// 현재 몇시? (0 ~ 23시)
+	CWarTimeInfo cWarTime;
+	BYTE btStartDay;
+	BYTE btStartHour;
+
+	INT nI;
+	for (nI = 0; nI < nHowManyTimesWeek; ++nI)
+	{
+		cWarTime = g_pcWarfieldInfo->GetWarTimeInfo(nWarfieldNo, nI);
+		btStartDay = cWarTime.m_btStartDay;
+		btStartHour = cWarTime.m_btStartHour;
+
+		if (btDayOfWeek == btStartDay)
+		{
+			if (btHour <= btStartHour)
+			{
+				ReturnStr[0] = btStartDay;
+				ReturnStr[1] = btStartHour;
+				break;
+			}
+			else if (btDayOfWeek < btStartDay)
+			{
+				ReturnStr[0] = btStartDay;
+				ReturnStr[1] = btStartHour;
+				break;
+			}
+			else
+			{
+				if ((nI + 1) == nHowManyTimesWeek)
+				{
+					cWarTime = g_pcWarfieldInfo->GetWarTimeInfo(nWarfieldNo, 0);
+					btStartDay = cWarTime.m_btStartDay;
+					btStartHour = cWarTime.m_btStartHour;
+					ReturnStr[0] = btStartDay;
+					ReturnStr[1] = btStartHour;
+				}
+			}
+		}
 	}
 }
 
@@ -9930,10 +10596,24 @@ void CNewWarfield::UpdateGuardStatus(LPCHARLIST pCaster,LPCHARLIST pTarget)
 
 void UpdateGuardStoneStatus(LPCHARLIST pCaster,LPCHARLIST pTarget)				// Kill Character Call
 {
-	if (!isNewWarfieldServer())
+	/*if (!isNewWarfieldServer())
 		return;
 
-	g_pNewWarfield->UpdateGuardStatus(pCaster,pTarget);
+	g_pNewWarfield->UpdateGuardStatus(pCaster,pTarget);*/
+	//< 1.4 Patch 후에 새로운 전쟁터인지 비교를 더 한다
+	if (!isNewWarfieldServer() && !IsNeoWarfieldServer())
+		return;
+
+	if (IsNeoWarfieldServer())
+	{
+		tagOpponent tagOpp;
+		tagOpp.lpCaster = pCaster;
+		tagOpp.lpTarget = pTarget;
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_UPDATE_GUARD_STATUS, (LPVOID)&tagOpp);
+	}
+	else
+		g_pNewWarfield->UpdateGuardStatus(pCaster, pTarget);
+	//>
 }
 
 void CNewWarfield::CountDeath(LPCHARLIST lpChar)
@@ -9944,10 +10624,19 @@ void CNewWarfield::CountDeath(LPCHARLIST lpChar)
 
 void CountNewWarfieldDeath(LPCHARLIST Attacker,LPCHARLIST Defencer)
 {
-	if (!isNewWarfieldServer())
+	//if (!isNewWarfieldServer())
+	//	return;
+
+	//g_pNewWarfield->CountDeath(Defencer);
+		//< 1.4 패치 신규국가전 추가로 if문 증가
+	if (!isNewWarfieldServer() && !IsNeoWarfieldServer())
 		return;
 
-	g_pNewWarfield->CountDeath(Defencer);
+	if (IsNeoWarfieldServer())
+		g_pcWarfieldMgr->ExecMsg(CWarfieldMgr::WPM_INC_DEATH_MEMBER, (LPVOID)Defencer);
+	else
+		g_pNewWarfield->CountDeath(Defencer);
+	//> 
 }
 
 void CNewWarfield::SendWarResult()
