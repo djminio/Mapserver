@@ -402,6 +402,7 @@
     <ClCompile Include="GameDefine.cpp" />
     <ClCompile Include="GameFactory.cpp" />
     <ClCompile Include="GameSystem.cpp" />
+    <ClCompile Include="GuildAlliance.cpp" />
     <ClCompile Include="HigherLayers\Ability.cpp" />
     <ClCompile Include="HigherLayers\AdventManager.cpp" />
     <ClCompile Include="HigherLayers\AIManager.cpp" />
@@ -524,6 +525,7 @@
     <ClInclude Include="GameDefine.h" />
     <ClInclude Include="GameFactory.h" />
     <ClInclude Include="GameSystem.h" />
+    <ClInclude Include="GuildAlliance.h" />
     <ClInclude Include="HigherLayers\Ability.h" />
     <ClInclude Include="HigherLayers\AdventManager.h" />
     <ClInclude Include="HigherLayers\AIDefine.h" />

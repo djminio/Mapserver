@@ -8753,10 +8753,10 @@ bool cNation::LoadNewWarStartupData()				// LTS NEW_NATION_WAR
 		ret=SQLFetch(hStmt);
 	}
 
-    SQLFreeStmt(hStmt,SQL_DROP);
-
 	// 전쟁 시간 제한 사항을 전역적으로 호출한다
-	//g_pcWarfieldInfo->LoadWarTimeInfo(WI_HADES_WARFIELD); hades load table reece commented out cause crashes map when trying to load from a invalid memory
+
+    SQLFreeStmt(hStmt,SQL_DROP);
+	g_pcWarfieldInfo->LoadWarTimeInfo(WI_HADES_WARFIELD);// hades load table reece commented out cause crashes map when trying to load from a invalid memory
 	return true;
 }	//> CSD-030804
 

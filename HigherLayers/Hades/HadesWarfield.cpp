@@ -77,7 +77,7 @@ CHadesWarfield::~CHadesWarfield()
 STDMETHODIMP CHadesWarfield::Init(INT nWarfieldNo)
 {
 	m_nWarfieldNo = nWarfieldNo;
-	//g_pcWarfieldInfo->LoadWarTimeInfo(m_nWarfieldNo);
+	g_pcWarfieldInfo->LoadWarTimeInfo(m_nWarfieldNo);
 
 	SAFE_DELETE(m_lpWarfieldState);
 	LPFACTORYDEFINE lpStateFactory = NULL;
