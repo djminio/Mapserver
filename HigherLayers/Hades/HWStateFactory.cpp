@@ -3,7 +3,7 @@
  *			implementation of the CHWStateFactory class.
  */
 //#include "..\stdafx.h"
-#include "StdAfx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
+#include "../../StdAfx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
 
 #include "HWStateFactory.h"
 #include "HWState.h"

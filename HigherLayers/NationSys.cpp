@@ -8,6 +8,8 @@
 #include "CItem.h"//020505 lsw
 #include "LogManager.h"
 #include "UserManager.h"
+#include "Hades/WarfieldInfo.h"
+#include "Hades/WarfieldMgr.h"
 
 cWarfield*		g_pWarfield=NULL;
 cNation*		g_pNation=NULL;
@@ -24,7 +26,11 @@ int				g_pNewWarfieldStatus[MAX_NEW_WARFIELD];
 //int				bMoveLevelMin[MAX_NEW_WARFIELD];		// MAX_NEW_WARFIELD
 int				MoveLevelMax[MAX_NEW_WARFIELD];		// MAX_NEW_WARFIELD
 int				MoveLevelMin[MAX_NEW_WARFIELD];		// MAX_NEW_WARFIELD
-
+DWORD			g_dwCurrWeekElapsedSec = 0;			// Elapsed Time from This Sunday to Current day
+LPWARFIELDINFO	g_pcWarfieldInfo;					// 관리 맵서버도 아니고 전쟁터 맵서버도 아닐때 사용
+int				g_naWarfieldState[WI_MAX_WARFIELD];	// 각 전쟁터 상황
+int				g_aJoinNation[NW_NATION_COUNT];		// 전쟁 참여 가능국가.
+CWarfieldMgr* g_pcWarfieldMgr = NULL;				// 전쟁터 관리자. 관리서버가 아니다. 각 전쟁터로 통하는 하나의 통로
 int				HonorWon[DRAGON_MAX_CONNECTIONS_]; //Eleval 07/09/09 - To store the honor won by a player during the warfield
 extern int		var[ DRAGON_MAX_CONNECTIONS_][ _SCRIPT_VARABLE_POINT_ ];
 
@@ -429,6 +435,22 @@ bool isNewWarfieldServer()
 	if (g_wMapServerPort<BASE_NEW_WARFIELD_PORT||g_wMapServerPort>=(BASE_NEW_WARFIELD_PORT+MAX_NEW_WARFIELD))
 		return false;
 	return true;
+}
+//< 1.4 패치 이후 새로운 전쟁터인가?
+BOOL IsNeoWarfieldServer()
+{
+	if ((WP_HADES_WARFIELD > g_wMapServerPort) || (WP_MAX_WARFIELD_PORT <= g_wMapServerPort))
+		return FALSE;
+
+	return TRUE;
+}
+
+// 1.4 패치 이후 새로운 전쟁터 번호인가?
+BOOL IsNeoWarfield(INT nWarfieldNo)
+{
+	if ((WI_HADES_WARFIELD > nWarfieldNo) || (WI_MAX_WARFIELD <= nWarfieldNo))
+		return FALSE;
+	return TRUE;
 }
 
 int CheckJoinReinforce(bool type=true)			// 일반전쟁 true
@@ -8673,9 +8695,10 @@ void CTeam::SetLivePoint(POINT lPoint)
 
 CGuardStone::CGuardStone()
 {
-	m_pGData		=NULL;
-	m_iWarfieldNo	=-1;
-	m_iTeamNo		=-1;
+	m_iGDataCount = 0;	// 체크강화 5994map Crash
+	m_pGData = NULL;
+	m_iWarfieldNo = -1;
+	m_iTeamNo = -1;
 }
 
 CGuardStone::~CGuardStone()
@@ -8692,6 +8715,27 @@ LPGDATA CGuardStone::GetGData(const int nIndex)
 
 	LPGDATA pGData = &m_pGData[nIndex];
 	return pGData;
+}
+
+const bool CGuardStone::IsValidGData() const
+{
+	//주의, release로 디버깅할때는 m_iGDataCount의 초기화되지 않은값이 음수값이지만, 
+	//VC Debugging모드 아닐경우 실제테스트할때는 양수의 아주큰값, 그래서, VC Debugging 모드에서는 버그가 발견되지 않지만, 실제 테스트에서는 계속 crash
+	//하지만, m_pGData의 포인트가 NULL이므로 이것을 기준으로 체크할수 있다.
+
+	if (NULL == m_pGData)	//가드스톤 데이터 로딩되지 않았으면 skip
+	{
+		return false;
+	}
+
+	for (int i = 0; i < m_iGDataCount; ++i)
+	{
+		if (TRUE == IsBadReadPtr(&m_pGData[i], sizeof(GDATA)))
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 
@@ -9398,6 +9442,22 @@ void SendNewWarEnd()
 
 	SendPacket2Maps(&packet);
 	g_pUserManager->SendPacket(&packet); // CSD-CN-031213
+}
+void SendNewWarEnd(INT nWarfieldNo)
+{ //1.4 Patch. 신전쟁터의 종료조건을 만들기 위해 인자 추가
+	t_packet packet;
+
+	packet.h.header.type = CMD_NWARFIELD_END_WAR;
+	if (IsNeoWarfield(nWarfieldNo))
+	{
+		packet.u.NationWar.CommonDataC.Data = nWarfieldNo;
+		packet.h.header.size = sizeof(t_CommonDataC);
+	}
+	else
+		packet.h.header.size = 0;
+
+	SendPacket2Maps(&packet);
+	g_pUserManager->SendPacket(&packet);
 }
 
 void CNewWarfield::SetWarfieldStatus(int Status)			// Packet Concern....

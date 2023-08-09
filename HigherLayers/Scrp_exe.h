@@ -82,6 +82,7 @@ enum eLDF_TYPE //enum Log Dual Fame
 {
 	LDF_LOCALWAR				=0,			// 국지전
 	LDF_QUEST					=1,			// 퀘스트
+	LDF_NEOWAR = 3,			// 퀘스트
 };
 
 extern void SaveChangeDualFame(CHARLIST *ch, const int nOldDualFame, const int nNewDualFame, eLDF_TYPE type); //030226 lsw

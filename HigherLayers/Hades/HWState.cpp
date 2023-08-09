@@ -2,11 +2,11 @@
  * @file	HWState.cpp.
  */
 //#include "..\stdafx.h"
-#include "StdAfx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
+#include "../../stdafx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
 
 #include "HWState.h"
 #include "WarfieldInfo.h"
-#include "LogManager.h"
+#include "../LogManager.h"
 
 extern void UpdateWarTime();
 extern void SendCMD_UPDATE_WARTIME(const int WarfieldNo, const int Status, const DWORD RemainTime);
@@ -41,7 +41,7 @@ STDMETHODIMP_(VOID) CHWPeaceState::Init(INT nWarfieldNo)
 	::SendCMD_UPDATE_WARTIME(m_nWarfieldNo, NW_PEACE, GetRemainTime());
 
 	//< LTH-040323-KO 로그 강화
-	g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "Peace State!! Active!! RemainTime : %ld", m_n64RemainTime);
+	g_pLogManager->SaveLogNeoNationWar(NNT_TIME_INFO, "Peace State!! Active!! RemainTime : %ld", m_n64RemainTime);
 	//> LTH-040323-KO
 }	//> LTH-040419-KO.
 
@@ -134,7 +134,7 @@ STDMETHODIMP_(VOID) CHWWarState::Init(INT nWarfieldNo)
 	::SendCMD_UPDATE_WARTIME(m_nWarfieldNo, NW_WAR, GetRemainTime());
 
 	//< LTH-040323-KO 로그 강화
-	g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "War State!! Active!! RemainTime : %ld", m_n64RemainTime);
+	g_pLogManager->SaveLogNeoNationWar(NNT_TIME_INFO, "War State!! Active!! RemainTime : %ld", m_n64RemainTime);
 	//> LTH-040323-KO
 }
 
@@ -209,7 +209,7 @@ STDMETHODIMP_(VOID) CHWSOpenState::Init(INT nWarfieldNo)
 	::SendCMD_UPDATE_WARTIME(m_nWarfieldNo, NW_SOPEN, GetRemainTime());
 
 	//< LTH-040323-KO 로그 강화
-	g_pLogManager->SaveLogNeoNationWar(NNT_STATE_INFO, "Secret Area Open State!! Active!! RemainTime : %ld", \
+	g_pLogManager->SaveLogNeoNationWar(NNT_TIME_INFO, "Secret Area Open State!! Active!! RemainTime : %ld", \
 		m_n64RemainTime);
 	//> LTH-040323-KO
 }

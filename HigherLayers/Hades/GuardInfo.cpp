@@ -3,12 +3,17 @@
  *			implementation of the CGuardInfo class.
  */
 //#include "..\stdafx.h"
-#include "StdAfx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
+#include "../../StdAfx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
 
 #include "GuardInfo.h"
 
-#include "UserManager.h"
-#include "LogManager.h"
+#include "../UserManager.h"
+#include "../LogManager.h"
+#include "F:/drsrc/MapServerLMS/HigherLayers/NationSys.h"
+
+
+
+
 
 extern WORD g_wMapServerPort;
 
@@ -43,6 +48,7 @@ BOOL CGuardInfo::CheckTypeAllBroke(INT nType)
 
 	BOOL bAllBroken = TRUE;
 	INT nI;
+
 	for (nI = 0; nI < m_iGDataCount; ++nI)
 	{
 		if (nType == m_pGData[nI].NPCType)
@@ -156,8 +162,9 @@ BOOL CGuardInfo::CheckAndUpdateStatus(LPCHARLIST lpChar)
 				break;
 			}
 			
-			//< LTH-040329-KO 로그 강화
-			g_pLogManager->SaveLogNeoNationWar(NNT_WAR_INFO, \
+				//< LTH-040329-KO 로그 강화
+				
+			g_pLogManager->SaveLogNeoNationWar(4, \
 					"Update Guard! NPC_ID:%d, NPC_SprNo:%d, NPC_Status:%d, NPC_Type:%d, Position(%d,%d)", \
 					m_pGData[nI].NPC_ID, lpChar->SprNo, m_pGData[nI].Status, m_pGData[nI].NPCType, \
 					m_pGData[nI].GenPosX, m_pGData[nI].GenPosY);
@@ -177,7 +184,7 @@ INT CGuardInfo::GetAliveGuardCount(INT nType)
 {
 	INT nCount = 0;
 	INT nI;
-
+	
 	//<060327_kch 5994map Crash (TEAM1 공격자일때는 가드스톤 없고, 사용안하는데, 처리,Debugging모드테스트에서는 괜찮지만, 실제테스트서는 crash)
 	if (false == IsValidGData())	//가드스톤 데이터가 없다면 skip
 	{

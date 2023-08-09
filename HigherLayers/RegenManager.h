@@ -98,7 +98,13 @@ class CGroupInfo
 public:
 	typedef list<CRegenInfo*>    LIST_REGEN;
 	typedef LIST_REGEN::iterator ITOR_REGEN;
-
+	enum EVENT_TYPE
+	{	//< CSD-040310
+		ET_NORMAL = 0,
+		ET_SCRIPT = 1,
+		ET_RAID = 2,
+		ET_HADES = 3
+	};	//> CSD-040310
 public:
 	static CGroupInfo* CreateGroupInfo()
 	{

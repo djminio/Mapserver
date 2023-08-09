@@ -1,4 +1,4 @@
-// LogManager.cpp: implementation of the CLogManager class.
+Ôªø// LogManager.cpp: implementation of the CLogManager class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -30,7 +30,7 @@ CLogManager::~CLogManager()
 ///////////////////////////////////////////////////////////////////////////////
 
 void CLogManager::CreateMainPath(const char* pPath)
-{	// ±‚∫ª µ∑∫≈‰∏Æ ª˝º∫
+{	// Í∏∞Î≥∏ ÎîîÎ†âÌÜ†Î¶¨ ÏÉùÏÑ±
 	_mkdir(pPath);
 
 	time_t nowTime;
@@ -39,15 +39,224 @@ void CLogManager::CreateMainPath(const char* pPath)
 	tm* pNow = localtime(&nowTime);
 	const int nYear = pNow->tm_year + 1900;
 	const int nMon = pNow->tm_mon + 1;
-	// ø˘∫∞ µ∑∫≈‰∏Æ ª˝º∫
+	// ÏõîÎ≥Ñ ÎîîÎ†âÌÜ†Î¶¨ ÏÉùÏÑ±
 	char szBuffer[MAX_PATH];
 	memset(szBuffer, 0, MAX_PATH);
-	sprintf_s(szBuffer, sizeof(szBuffer),"%s\\%04d_%02d", pPath, nYear, nMon);
+	sprintf_s(szBuffer, sizeof(szBuffer), "%s\\%04d_%02d", pPath, nYear, nMon);
 	_mkdir(szBuffer);
 	//
 	m_strRoot = szBuffer;
 }
+void CLogManager::SaveLogChange_DualFame(CHARLIST* pTarget, const int nOldDualFame,
+	const int nNewDualFame, eLDF_TYPE type)
+{
+	string strPath;
 
+	if (!GetLogPath(LT_CHANGE, strPath))
+	{
+		return;
+	}
+
+	FILE* fp = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
+
+	if (fp == NULL)
+	{
+		fp = fopen(VA("%s/%s.txt", strPath.c_str(), connections[pTarget->GetServerID()].id), "at+");
+
+		if (fp == NULL)
+		{
+			return;
+		}
+	}
+
+	char why[MAX_PATH] = { 0, };
+	switch (type)
+	{
+	case LDF_LOCALWAR:
+	{	// ¬µ√†¬æ√≥ ¬º√í¬∫√±
+		::strcpy(why, "LocalWar");
+		break;
+	}
+	case LDF_QUEST:
+	{	// ¬±¬π√Å√∂√Ä√º
+		::strcpy(why, "Quest");
+		break;
+	}
+	case LDF_NEOWAR:
+	{
+		::strcpy(why, "NeoWar");			// 1.4 ¬Ω√Ö¬±√î¬±¬π¬∞¬°√Ä√º 
+	}
+	break;
+	default:
+	{
+		::strcpy(why, "default");
+	}break;
+	}
+
+	::fprintf(fp, "@ChangeDualFame	why=%s %02d-%02d-%02d %02d:%02d:%02d	(x:%d y:%d)	(old)%d	(new)%d\n",
+		why,
+		g_year - 2000, g_mon + 1, g_day,
+		g_hour, g_min, g_sec,
+		pTarget->X, pTarget->Y, nOldDualFame, nNewDualFame);
+	::fclose(fp);
+}
+void CLogManager::SaveLogNeoNationWar(const int nType, char* szLogMsg, ...)
+{
+	va_list vargs;
+	struct tm* now;
+	time_t nowTime;
+
+	int year = 0, mon = 0, day = 0;
+	int hour = 0, min = 0, sec = 0;
+
+	// Get nowtime
+	time(&nowTime);
+	now = localtime(&nowTime);
+
+	// Make it usable.
+	year = now->tm_year + 1900;
+	mon = now->tm_mon + 1;
+	day = now->tm_mday;
+	hour = now->tm_hour;
+	min = now->tm_min;
+	sec = now->tm_sec;
+
+	char szTime[64] = { 0, };
+	_snprintf(szTime, sizeof(szTime), "[%02d:%02d:%02d] ", hour, min, sec);
+
+	// ¬∑√é¬±√ó √Ö¬∏√Ä√î ¬∫√ê¬∑√π
+	char szType[64] = { 0, };
+	switch (nType)
+	{
+	case NNT_TIME_INFO:
+		_snprintf(szType, sizeof(szType), "[Time Info] ");
+		break;
+	case NNT_STATE_INFO:
+		_snprintf(szType, sizeof(szType), "[State Info] ");
+		break;
+	case NNT_FAME_INFO:
+		_snprintf(szType, sizeof(szType), "[Fame Info] ");
+		break;
+	case NNT_CHARACTER_INFO:
+		_snprintf(szType, sizeof(szType), "[User Info] ");
+		break;
+	case NNT_WAR_INFO:
+		_snprintf(szType, sizeof(szType), "[War Info] ");
+		break;
+	default:
+		_snprintf(szType, sizeof(szType), "");
+		break;
+	}
+
+	va_start(vargs, szLogMsg);
+
+	if (strlen(szLogMsg) > 2048 - (strlen(szType) + strlen(szTime) + 1))
+	{
+		MyLog(LOG_FATAL, "Log Too long string - This log will be lost");
+		va_end(vargs);
+		return;
+	}
+
+	string strPath;
+	if (!GetLogPath(LT_NEONATIONWAR, strPath))
+	{
+		return;
+	}
+
+	// ¬∞√¶¬∑√é¬ø¬° √Ü√Ñ√Ä√è√Ä¬ª ¬ø¬¨¬¥√ô
+	const char* pPath = VA("%s\\NeoNationWarLog_%02d_%02d_%02d.txt", strPath.c_str(), year - 2000, mon, day);
+	FILE* pFile = fopen(pPath, "at+");
+
+	if (pFile == NULL)
+	{
+		return;
+	}
+
+	char szLog[2048] = { 0, };
+	strncpy(szLog, szTime, sizeof(szLog));
+	strncat(szLog, szType, sizeof(szLog));
+	char szTemp[2048] = { 0, };
+	_vsnprintf(szTemp, sizeof(szTemp), szLogMsg, (vargs));
+	strncat(szLog, szTemp, sizeof(szLog));
+	strncat(szLog, "\n", sizeof(szLog));
+
+	fprintf(pFile, szLog);
+	fclose(pFile);
+	// Finish Func
+	va_end(vargs);
+
+	::MyLog(LOG_JUST_DISPLAY, szLog);
+}
+void CLogManager::SaveLogChange_Fame(CHARLIST* pTarget, int old_fame, int new_fame,
+	eLF_TYPE type)
+{
+	string strPath;
+
+	if (!GetLogPath(LT_CHANGE, strPath))
+	{
+		return;
+	}
+
+	FILE* fp = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
+
+	if (fp == NULL)
+	{
+		fp = fopen(VA("%s/%s.txt", strPath.c_str(), connections[pTarget->GetServerID()].id), "at+");
+
+		if (fp == NULL)
+		{
+			return;
+		}
+	}
+
+	char why[MAX_PATH] = { 0, };
+
+	switch (type)
+	{
+	case LF_DUAL:
+	{	// ¬µ√†¬æ√≥ ¬º√í¬∫√±
+		strcpy(why, "upgrade dual");
+		break;
+	}
+	case LF_LOCALWAR:
+	{	// ¬±¬π√Å√∂√Ä√º
+		strcpy(why, "LocalWar");
+		break;
+	}
+	case LF_ITEMBUY:
+	{	// ¬±¬π¬∞¬° ¬∞√≠¬±√û ¬æ√Ü√Ä√å√Ö√õ
+		strcpy(why, "Nation Item Buy");
+		break;
+	}
+	case LF_DONATION:
+	{	// ¬±¬π¬∞¬° ¬±√¢¬∫√é
+		strcpy(why, "Nation Doantion");
+		break;
+	}
+	case LF_NATIONWAR:
+	{	// ¬±¬π¬∞¬°√Ä√º
+		strcpy(why, "Nation War");
+		break;
+	}
+	case LF_SCRIPT:
+	{	// ¬Ω¬∫√Ö¬©¬∏¬≥√Ü¬Æ √Ü√£¬º√á
+		strcpy(why, "Script Func");
+		break;
+	}
+	default:
+	{
+		strcpy(why, "default");
+		break;
+	}
+	}
+
+	::fprintf(fp, "@ChangeFame	why=%s %02d-%02d-%02d %02d:%02d:%02d	(x:%d y:%d)	(old)%d	(new)%d\n",
+		why,
+		g_year - 2000, g_mon + 1, g_day,
+		g_hour, g_min, g_sec,
+		pTarget->X, pTarget->Y, old_fame, new_fame);
+	::fclose(fp);
+}
 void CLogManager::CreateSubPath(int nType, const char* pPath)
 {
 	string strTemp = m_strRoot;
@@ -69,7 +278,7 @@ void CLogManager::SaveDupe(CHARLIST* pTarget)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pTarget->Name);
@@ -87,9 +296,9 @@ void CLogManager::SaveDupe(CHARLIST* pTarget)
 	}
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
-	fprintf(pFile, "MapName(%s), IP(%s), Name(%s)\n", connections[pTarget->GetServerID()].mapname, 
-		                                              connections[pTarget->GetServerID()].ip_address,
-													  connections[pTarget->GetServerID()].name);
+	fprintf(pFile, "MapName(%s), IP(%s), Name(%s)\n", connections[pTarget->GetServerID()].mapname,
+		connections[pTarget->GetServerID()].ip_address,
+		connections[pTarget->GetServerID()].name);
 	fclose(pFile);
 }	//> CSD-030808
 
@@ -104,7 +313,7 @@ void CLogManager::SaveTeleport(CHARLIST* pTarget, int newx, int newy)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pTarget->Name);
@@ -122,20 +331,20 @@ void CLogManager::SaveTeleport(CHARLIST* pTarget, int newx, int newy)
 	}
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]\n", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
-	fprintf(pFile, "MapName(%s), IP(%s), Name(%s), OldX(%d), OldY(%d), NewX(%d) NewY(%d)\n", 
-													  connections[pTarget->GetServerID()].mapname, 
-		                                              connections[pTarget->GetServerID()].ip_address,
-													  connections[pTarget->GetServerID()].name,
-													  pTarget->OldMoveSx, pTarget->OldMoveSy,
-													  newx, newy);
+	fprintf(pFile, "MapName(%s), IP(%s), Name(%s), OldX(%d), OldY(%d), NewX(%d) NewY(%d)\n",
+		connections[pTarget->GetServerID()].mapname,
+		connections[pTarget->GetServerID()].ip_address,
+		connections[pTarget->GetServerID()].name,
+		pTarget->OldMoveSx, pTarget->OldMoveSy,
+		newx, newy);
 	fprintf(pFile, "MoveLength(%d), MovePathCount(%d), MoveType(%d)\n\n",
-													  pTarget->MoveLength,
-													  pTarget->MovePathCount,
-													  pTarget->MoveType);
+		pTarget->MoveLength,
+		pTarget->MovePathCount,
+		pTarget->MoveType);
 	fclose(pFile);
 }	//> CSD-030808
 
-void CLogManager::SaveEtc(CHARLIST* pTarget, char *info)
+void CLogManager::SaveEtc(CHARLIST* pTarget, char* info)
 {	//< CSD-030808
 	string strPath;
 
@@ -146,7 +355,7 @@ void CLogManager::SaveEtc(CHARLIST* pTarget, char *info)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pTarget->Name);
@@ -165,12 +374,12 @@ void CLogManager::SaveEtc(CHARLIST* pTarget, char *info)
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "Map: %s (%d,%d), IP: %s, Name: %s Id: %s Info: %s\n", pTarget->MapName,
-														pTarget->X,
-													  pTarget->Y,
-		                                              connections[pTarget->GetServerID()].ip_address,
-													  pTarget->Name,
-													  connections[pTarget->GetServerID()].id,
-													  info);
+		pTarget->X,
+		pTarget->Y,
+		connections[pTarget->GetServerID()].ip_address,
+		pTarget->Name,
+		connections[pTarget->GetServerID()].id,
+		info);
 	fclose(pFile);
 }	//> CSD-030808
 
@@ -185,7 +394,7 @@ void CLogManager::SaveAttackRange(CHARLIST* pTarget, char* info)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pTarget->Name);
@@ -204,16 +413,16 @@ void CLogManager::SaveAttackRange(CHARLIST* pTarget, char* info)
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "Map: %s (%d,%d), IP: %s, Name: %s Id: %s Info: %s\n", pTarget->MapName,
-														pTarget->X,
-													  pTarget->Y,
-		                                              connections[pTarget->GetServerID()].ip_address,
-													  pTarget->Name,
-													  connections[pTarget->GetServerID()].id,
-													  info);
+		pTarget->X,
+		pTarget->Y,
+		connections[pTarget->GetServerID()].ip_address,
+		pTarget->Name,
+		connections[pTarget->GetServerID()].id,
+		info);
 	fclose(pFile);
 }	//> CSD-030808
 
-void CLogManager::SaveTimeChecks(CHARLIST* pTarget, char *info)
+void CLogManager::SaveTimeChecks(CHARLIST* pTarget, char* info)
 {	//< CSD-030808
 	string strPath;
 
@@ -224,7 +433,7 @@ void CLogManager::SaveTimeChecks(CHARLIST* pTarget, char *info)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pTarget->Name);
@@ -243,16 +452,16 @@ void CLogManager::SaveTimeChecks(CHARLIST* pTarget, char *info)
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "Map: %s (%d,%d), IP: %s, Name: %s Id: %s Info: %s\n", pTarget->MapName,
-														pTarget->X,
-													  pTarget->Y,
-		                                              connections[pTarget->GetServerID()].ip_address,
-													  pTarget->Name,
-													  connections[pTarget->GetServerID()].id,
-													  info);
+		pTarget->X,
+		pTarget->Y,
+		connections[pTarget->GetServerID()].ip_address,
+		pTarget->Name,
+		connections[pTarget->GetServerID()].id,
+		info);
 	fclose(pFile);
 }	//> CSD-030808
 
-void CLogManager::SaveTileChecks(CHARLIST* pTarget, char *info)
+void CLogManager::SaveTileChecks(CHARLIST* pTarget, char* info)
 {	//< CSD-030808
 	string strPath;
 
@@ -263,7 +472,7 @@ void CLogManager::SaveTileChecks(CHARLIST* pTarget, char *info)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pTarget->Name);
@@ -282,12 +491,12 @@ void CLogManager::SaveTileChecks(CHARLIST* pTarget, char *info)
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "Map: %s (%d,%d), IP: %s, Name: %s Id: %s Info: %s\n", pTarget->MapName,
-														pTarget->X,
-													  pTarget->Y,
-		                                              connections[pTarget->GetServerID()].ip_address,
-													  pTarget->Name,
-													  connections[pTarget->GetServerID()].id,
-													  info);
+		pTarget->X,
+		pTarget->Y,
+		connections[pTarget->GetServerID()].ip_address,
+		pTarget->Name,
+		connections[pTarget->GetServerID()].id,
+		info);
 	fclose(pFile);
 }	//> CSD-030808
 
@@ -304,7 +513,7 @@ void CLogManager::SaveStrikeAttack(CHARLIST* pCaster, CHARLIST* pTarget)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pCaster->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pCaster->Name);
@@ -322,10 +531,10 @@ void CLogManager::SaveStrikeAttack(CHARLIST* pCaster, CHARLIST* pTarget)
 	}
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
-	
+
 	const int nCombat = pCaster->GetActiveCombat();
 	bitset<MAX_CLASS> bsClass(Magic_Ref[nCombat].nClass);
-	
+
 	const int nClass = pCaster->Class;
 
 	if (!bsClass[nClass])
@@ -343,9 +552,9 @@ void CLogManager::SaveStrikeAttack(CHARLIST* pCaster, CHARLIST* pTarget)
 
 	const int nKind = pCaster->GetTacticsKind();
 	fprintf(pFile, "%s(%d/%d/%d)\n", ConvertToTactics(nKind),
-		                             pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
-					  			     pCaster->Skill[nKind],
-									 pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
+		pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
+		pCaster->Skill[nKind],
+		pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
 	fclose(pFile);
 }	//> CSD-030804
 
@@ -362,7 +571,7 @@ void CLogManager::SaveThrowAttack(CHARLIST* pCaster, CHARLIST* pTarget)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pCaster->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pCaster->Name);
@@ -380,10 +589,10 @@ void CLogManager::SaveThrowAttack(CHARLIST* pCaster, CHARLIST* pTarget)
 	}
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
-	
+
 	const int nCombat = pCaster->GetActiveCombat();
 	bitset<MAX_CLASS> bsClass(Magic_Ref[nCombat].nClass);
-	
+
 	const int nClass = pCaster->Class;
 
 	if (!bsClass[nClass])
@@ -401,9 +610,9 @@ void CLogManager::SaveThrowAttack(CHARLIST* pCaster, CHARLIST* pTarget)
 
 	const int nKind = pCaster->GetTacticsKind();
 	fprintf(pFile, "%s(%d/%d/%d)\n", ConvertToTactics(nKind),
-		                             pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
-					  			     pCaster->Skill[nKind],
-									 pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
+		pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
+		pCaster->Skill[nKind],
+		pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
 	fclose(pFile);
 }	//> CSD-030804
 
@@ -416,11 +625,11 @@ void CLogManager::SaveMagicExecute(BYTE nMagic, CHARLIST* pCaster, CHARLIST* pTa
 	if (!GetLogPath(LT_CHECK, strPath))
 	{
 		return;
-	}	
+	}
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pCaster->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pCaster->Name);
@@ -440,7 +649,7 @@ void CLogManager::SaveMagicExecute(BYTE nMagic, CHARLIST* pCaster, CHARLIST* pTa
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "%s, ", Magic_Ref[nMagic].Han_Name);
 	fprintf(pFile, "%s(%3d, %3d), ", MapName, pCaster->MoveSx, pCaster->MoveSy);
-	fprintf(pFile, "%s(%d, %d), ", GetTargetName(pTarget), nX/32, nY/32);
+	fprintf(pFile, "%s(%d, %d), ", GetTargetName(pTarget), nX / 32, nY / 32);
 	fprintf(pFile, "exp(%d/%d/%d), ", pCaster->GetExperienceStep(), pCaster->GetLevel(), pCaster->Exp); // CSD-030806
 
 	int nKind = TACTICS_Crapple;
@@ -450,11 +659,11 @@ void CLogManager::SaveMagicExecute(BYTE nMagic, CHARLIST* pCaster, CHARLIST* pTa
 	case WIZARD_SPELL: nKind = TACTICS_Magery; break;
 	case PRIEST_SPELL: nKind = TACTICS_Orison; break;
 	}
-	
+
 	fprintf(pFile, "%s(%d/%d/%d)\n", ConvertToTactics(nKind),
-		                             pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
-					  			     pCaster->Skill[nKind],
-									 pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
+		pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
+		pCaster->Skill[nKind],
+		pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
 	fclose(pFile);
 }	//> CSD-030804
 
@@ -471,7 +680,7 @@ void CLogManager::SaveCombatExecute(BYTE nCombat, CHARLIST* pCaster, CHARLIST* p
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pCaster->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pCaster->Name);
@@ -491,15 +700,15 @@ void CLogManager::SaveCombatExecute(BYTE nCombat, CHARLIST* pCaster, CHARLIST* p
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "%s(%d), ", Magic_Ref[nCombat].Han_Name, Magic_Ref[nCombat].nCombatCount);
 	fprintf(pFile, "%s(%3d, %3d), ", MapName, pCaster->MoveSx, pCaster->MoveSy);
-	fprintf(pFile, "%s(%d, %d), ", GetTargetName(pTarget), nX/32, nY/32);
-	fprintf(pFile, "exp(%d/%d/%d), ", pCaster->GetExperienceStep(), 
-									  pCaster->GetLevel(),
-									  pCaster->Exp); // CSD-030806
+	fprintf(pFile, "%s(%d, %d), ", GetTargetName(pTarget), nX / 32, nY / 32);
+	fprintf(pFile, "exp(%d/%d/%d), ", pCaster->GetExperienceStep(),
+		pCaster->GetLevel(),
+		pCaster->Exp); // CSD-030806
 	const int nKind = pCaster->GetTacticsKind();
 	fprintf(pFile, "%s(%d/%d/%d)\n", ConvertToTactics(nKind),
-		                             pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
-					  			     pCaster->Skill[nKind],
-									 pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
+		pCaster->GetTacticsStep(nKind - TACTICS_Crapple),
+		pCaster->Skill[nKind],
+		pCaster->tac_skillEXP[nKind - TACTICS_Crapple]);
 	fclose(pFile);
 }	//> CSD-030804
 
@@ -514,7 +723,7 @@ void CLogManager::SaveAccelType(CHARLIST* pTarget, const char* pType)
 	//< CSD-040224
 	FILE* pFile = fopen(VA("%s/%s.txt", strPath.c_str(), pTarget->Name), "at+");
 
-	if(pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
+	if (pFile == NULL) //Eleval 16/08/09 - For chars with special chars (like *)
 	{
 		char file[FILENAME_MAX];
 		RewritePathWithSpecialCharacters(file, pTarget->Name);
@@ -532,9 +741,9 @@ void CLogManager::SaveAccelType(CHARLIST* pTarget, const char* pType)
 	}
 	//> CSD-040224
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
-	fprintf(pFile, "MapName(%s), IP(%s), Type(%s)\n", connections[pTarget->GetServerID()].mapname, 
-		                                              connections[pTarget->GetServerID()].ip_address,
-													  pType);
+	fprintf(pFile, "MapName(%s), IP(%s), Type(%s)\n", connections[pTarget->GetServerID()].mapname,
+		connections[pTarget->GetServerID()].ip_address,
+		pType);
 	fclose(pFile);
 }	//> CSD-030808
 
@@ -546,21 +755,21 @@ void CLogManager::SaveDeadEventNpc(CHARLIST* pTarget)
 	{
 		return;
 	}
-	
+
 	const char* pPath = VA("%s\\DeadEventNpc.txt", strPath.c_str());
 	FILE* pFile = fopen(pPath, "at+");
-	
+
 	if (pFile == NULL)
 	{
 		return;
 	}
 
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
-	fprintf(pFile, "%s(%3d, %3d), EventNo(%d), Killer(%s)\n", MapName, 
-		                                                      pTarget->MoveSx, 
-															  pTarget->MoveSy, 
-															  pTarget->eventno,
-															  pTarget->KillerName);
+	fprintf(pFile, "%s(%3d, %3d), EventNo(%d), Killer(%s)\n", MapName,
+		pTarget->MoveSx,
+		pTarget->MoveSy,
+		pTarget->eventno,
+		pTarget->KillerName);
 	fclose(pFile);
 }	//> CSD-031013
 
@@ -577,9 +786,9 @@ void CLogManager::SaveSealStoneInfo(CHARLIST* pSource, CHARLIST* pTarget, int nD
 	{
 		return;
 	}
-	
+
 	// 040331-YGI
-	const char* pPath = VA("%s\\%d%02d%02d%02d_SealStone.txt", strPath.c_str(), g_MapPort, g_year-2000, g_mon+1, g_day);
+	const char* pPath = VA("%s\\%d%02d%02d%02d_SealStone.txt", strPath.c_str(), g_MapPort, g_year - 2000, g_mon + 1, g_day);
 	FILE* pFile = fopen(pPath, "at+");
 
 	if (pFile == NULL)
@@ -589,12 +798,12 @@ void CLogManager::SaveSealStoneInfo(CHARLIST* pSource, CHARLIST* pTarget, int nD
 
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "%s(%3d, %3d), %s(%3d, %3d), Damage(%d)\n", pSource->Name,
-		                                                       pSource->X,
-											                   pSource->Y, 
-															   pTarget->Name,
-		                                                       pTarget->MoveSx,
-											                   pTarget->MoveSy, 
-												               nDamage);
+		pSource->X,
+		pSource->Y,
+		pTarget->Name,
+		pTarget->MoveSx,
+		pTarget->MoveSy,
+		nDamage);
 	fclose(pFile);
 }	//> CSD-040316
 
@@ -606,10 +815,10 @@ void CLogManager::SaveLocalWarInfo(CHARLIST* pTarget)
 	{
 		return;
 	}
-	
+
 	// 040331-YGI
 	const char* pPath = VA("%s\\%02d%02d%02d.txt", strPath.c_str(), g_year - 2000, g_mon + 1, g_day);
-	
+
 	FILE* pFile = fopen(pPath, "at+");
 
 	if (pFile == NULL)
@@ -621,34 +830,34 @@ void CLogManager::SaveLocalWarInfo(CHARLIST* pTarget)
 
 	switch (pTarget->name_status.nation)
 	{
-	case NW_BY:	
-		{
-			strNation = "NW_BY";
-			break;
-		}
-	case NW_ZY:	
-		{
-			strNation = "NW_ZY";
-			break;
-		}
-	case NW_YL:	
-		{
-			strNation = "NW_YL";
-			break;
-		}
+	case NW_BY:
+	{
+		strNation = "NW_BY";
+		break;
+	}
+	case NW_ZY:
+	{
+		strNation = "NW_ZY";
+		break;
+	}
+	case NW_YL:
+	{
+		strNation = "NW_YL";
+		break;
+	}
 	default:
-		{
-			strNation = "UNKNOWN";
-			break;
-		}
+	{
+		strNation = "UNKNOWN";
+		break;
+	}
 	}
 
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 	fprintf(pFile, "Nation(%s), Map(%d), %s(%3d, %3d)\n", strNation.c_str(),
-		                                                  g_MapPort,
-										                  pTarget->Name,
-		                                                  pTarget->X,
-											              pTarget->Y);
+		g_MapPort,
+		pTarget->Name,
+		pTarget->X,
+		pTarget->Y);
 	fclose(pFile);
 }	//> CSD-040407
 
@@ -662,7 +871,7 @@ const char* CLogManager::ConvertToDay(int nDay) const
 		CASE_SELECT(THURSDAY)
 		CASE_SELECT(FRIDAY)
 		CASE_SELECT(SATURDAY)
-	END_SELECT(UNKNOWNDAY)
+		END_SELECT(UNKNOWNDAY)
 }	//> CSD-030804
 
 const char* CLogManager::ConvertToTactics(int nKind) const
@@ -681,7 +890,7 @@ const char* CLogManager::ConvertToTactics(int nKind) const
 		CASE_SELECT(TACTICS_Double_MaceFighting)
 		CASE_SELECT(TACTICS_Magery)
 		CASE_SELECT(TACTICS_Orison)
-	END_SELECT(SKILL_UNKNOWN)
+		END_SELECT(SKILL_UNKNOWN)
 }	//> CSD-030804
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -698,16 +907,16 @@ const char* CLogManager::GetTargetName(CHARLIST* pTarget) const
 	return NPC_Gen_Ref[pTarget->npc_index].Name;
 }	//> CSD-030804
 
-//<! BBD 040226	ø¡º«∑Œ±◊∏¶ ¿ß«ÿª˝º∫«— «‘ºˆ
+//<! BBD 040226	Ïò•ÏÖòÎ°úÍ∑∏Î•º ÏúÑÌï¥ÏÉùÏÑ±Ìïú Ìï®Ïàò
 ///////////////////////////////////////////////////////////////////////////////
 // Public Method
 ///////////////////////////////////////////////////////////////////////////////
-void CLogManager::SaveAutionLog(int type, t_SellerItemDelete *pRecordInfo)
+void CLogManager::SaveAutionLog(int type, t_SellerItemDelete* pRecordInfo)
 {
 
-	// ∑Œ±◊ ≈∏¿‘ ∫–∑˘
+	// Î°úÍ∑∏ ÌÉÄÏûÖ Î∂ÑÎ•ò
 	char szType[64];
-	switch(type)
+	switch (type)
 	{
 	case ACLT_SELLER_REGIST:
 		sprintf_s(szType, sizeof(szType), "<<SELLER_REGIST>>");
@@ -725,7 +934,7 @@ void CLogManager::SaveAutionLog(int type, t_SellerItemDelete *pRecordInfo)
 		return;
 	}
 
-	// ≈∏¿‘¿Ã ¡§ªÛ¿”
+	// ÌÉÄÏûÖÏù¥ Ï†ïÏÉÅÏûÑ
 	string strPath;
 
 	if (!GetLogPath(LT_AUCTION, strPath))
@@ -733,42 +942,42 @@ void CLogManager::SaveAutionLog(int type, t_SellerItemDelete *pRecordInfo)
 		return;
 	}
 
-	// ∞Ê∑Œø° ∆ƒ¿œ¿ª ø¨¥Ÿ
+	// Í≤ΩÎ°úÏóê ÌååÏùºÏùÑ Ïó∞Îã§
 	const char* pPath = VA("%s\\AuctionLog_%04d_%02d_%02d.txt", strPath.c_str(), g_year, g_mon + 1, g_day);
 	FILE* pFile = fopen(pPath, "at+");
-	
+
 	if (pFile == NULL)
 	{
 		return;
 	}
 
 
-	//∑Œ±◊∏¶ «—¡Ÿæø ≥≤±‰¥Ÿ
+	//Î°úÍ∑∏Î•º ÌïúÏ§ÑÏî© ÎÇ®Í∏¥Îã§
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]\t", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 
-	// ¡ˆ¿˙∫–«œ¥œ±Ò ø©±‚º≠ πﬁæ∆ø¿¿⁄
-	char * Seller = pRecordInfo->szSellerName;
-	char * Buyer = pRecordInfo->szName;
+	// ÏßÄÏ†ÄÎ∂ÑÌïòÎãàÍπê Ïó¨Í∏∞ÏÑú Î∞õÏïÑÏò§Ïûê
+	char* Seller = pRecordInfo->szSellerName;
+	char* Buyer = pRecordInfo->szName;
 	int money = pRecordInfo->dwSellValue;
 	int item_no = pRecordInfo->SellItem.item_no;
 	int limit = pRecordInfo->SellItem.attr[1];
-	RareMain *pRare = (RareMain *)&(pRecordInfo->SellItem.attr[3]);
+	RareMain* pRare = (RareMain*)&(pRecordInfo->SellItem.attr[3]);
 
-	// ∫ª∞›¿˚¿∏∑Œ ∑Œ±◊∏¶ ≥≤∞‹∫∏¿⁄
+	// Î≥∏Í≤©Ï†ÅÏúºÎ°ú Î°úÍ∑∏Î•º ÎÇ®Í≤®Î≥¥Ïûê
 	fprintf(pFile, "Type:%s\tSeller:%s\tBuyer:%s\tMoney:%d\tItemNo:%d\tLimit:%d\tGrade:%d\tSok1:%d\tSok2:%d\tSok3:%d\tHigh:%d\tDynamic:%d\t\n",
 		szType, Seller, Buyer, money, item_no, limit, pRare->grade, pRare->soksung1, pRare->soksung2, pRare->soksung3, pRare->iHighLevel, pRare->IsDynamicRare);
 
 	fclose(pFile);
 }
-//> BBD 040226	ø¡º«∑Œ±◊∏¶ ¿ß«ÿª˝º∫«— «‘ºˆ
+//> BBD 040226	Ïò•ÏÖòÎ°úÍ∑∏Î•º ÏúÑÌï¥ÏÉùÏÑ±Ìïú Ìï®Ïàò
 
-//<! BBD 040308 ¿Ã∫•∆Æ æ∆¿Ã≈€ ∑ŒΩ∫∆Æ ∑Œ±◊
-// ∏ º≠πˆ∞° ¿Ã∫•∆Æ æ∆¿Ã≈€ ¡ˆ±ﬁø° Ω«∆–«ﬂ¿ª∂ß ≥≤±‚¥¬ ∑Œ±◊
-void CLogManager::SaveEventItemLostLog(int type, char * szName, int nIndex)
+//<! BBD 040308 Ïù¥Î≤§Ìä∏ ÏïÑÏù¥ÌÖú Î°úÏä§Ìä∏ Î°úÍ∑∏
+// ÎßµÏÑúÎ≤ÑÍ∞Ä Ïù¥Î≤§Ìä∏ ÏïÑÏù¥ÌÖú ÏßÄÍ∏âÏóê Ïã§Ìå®ÌñàÏùÑÎïå ÎÇ®Í∏∞Îäî Î°úÍ∑∏
+void CLogManager::SaveEventItemLostLog(int type, char* szName, int nIndex)
 {
-	// ∑Œ±◊ ≈∏¿‘ ∫–∑˘
+	// Î°úÍ∑∏ ÌÉÄÏûÖ Î∂ÑÎ•ò
 	char szReason[64];
-	switch(type)
+	switch (type)
 	{
 	case EILT_INVALID_CONNECTION:
 		sprintf_s(szReason, sizeof(szReason), "<<Disconnected>>");
@@ -790,31 +999,31 @@ void CLogManager::SaveEventItemLostLog(int type, char * szName, int nIndex)
 		return;
 	}
 
-	// ∞Ê∑Œø° ∆ƒ¿œ¿ª ø¨¥Ÿ
+	// Í≤ΩÎ°úÏóê ÌååÏùºÏùÑ Ïó∞Îã§
 	const char* pPath = VA("%s\\EventItemLog_%04d_%02d_%02d.txt", strPath.c_str(), g_year, g_mon + 1, g_day);
 	FILE* pFile = fopen(pPath, "at+");
-	
+
 	if (pFile == NULL)
 	{
 		return;
 	}
 
-	//∑Œ±◊∏¶ «—¡Ÿæø ≥≤±‰¥Ÿ
+	//Î°úÍ∑∏Î•º ÌïúÏ§ÑÏî© ÎÇ®Í∏¥Îã§
 	fprintf(pFile, "[%04d.%02d.%02d %02d:%02d:%02d]\t", g_year, g_mon + 1, g_day, g_hour, g_min, g_sec);
 
 	fprintf(pFile, "Reason : %s\tName : %s\tItemIndex : %d\t\n", szReason, szName, nIndex);
-	
+
 	fclose(pFile);
 }
-//> BBD 040308 ¿Ã∫•∆Æ æ∆¿Ã≈€ ∑ŒΩ∫∆Æ ∑Œ±◊
+//> BBD 040308 Ïù¥Î≤§Ìä∏ ÏïÑÏù¥ÌÖú Î°úÏä§Ìä∏ Î°úÍ∑∏
 
-inline void RewritePathWithSpecialCharacters( char *file, char *charname) //Eleval 16/08/09 - for chars who's name has special chars
+inline void RewritePathWithSpecialCharacters(char* file, char* charname) //Eleval 16/08/09 - for chars who's name has special chars
 {
 	char newCharName[64] = "";
 
-	for(int i = 0; charname[i] != '\0' ; i++)
+	for (int i = 0; charname[i] != '\0'; i++)
 	{
-		if(charname[i] != 92 && charname[i] != 47 && charname[i] != 58 && charname[i] != 42 && charname[i] != 63 && charname[i] != 34 && charname[i] != 60 && charname[i] != 62 && charname[i] != 124)
+		if (charname[i] != 92 && charname[i] != 47 && charname[i] != 58 && charname[i] != 42 && charname[i] != 63 && charname[i] != 34 && charname[i] != 60 && charname[i] != 62 && charname[i] != 124)
 		{
 			char temp[8] = "";
 			sprintf(temp, "%c", charname[i]);

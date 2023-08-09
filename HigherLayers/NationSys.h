@@ -850,6 +850,7 @@ typedef struct GDATA
 
 typedef class CGuardStone
 {
+protected:
 	int				m_iWarfieldNo;
 	int				m_iTeamNo;
 
@@ -894,6 +895,7 @@ public :
 
 	LPGDATA			GetGData(const int nIndex); // 030506 kyo
 	int				GetCount(){return m_iGDataCount;};	// 030506 kyo
+	const bool IsValidGData() const; // 체크강화 5994map Crash때문에 안전하게 접근하는지 체크
 
 }*LPGUARDSTONE;
 

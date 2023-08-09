@@ -13,6 +13,9 @@
       <UniqueIdentifier>{0b890d07-aba4-466c-8c86-8e6a0b972502}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
+    <Filter Include="Hades">
+      <UniqueIdentifier>{3dd5e742-4a6b-4fc7-be68-35c2b45e9ce6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HigherLayers\Ability.cpp">
@@ -350,6 +353,30 @@
     </ClCompile>
     <ClCompile Include="HigherLayers\WinZS.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\GuardInfo.cpp">
+      <Filter>Hades</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\HadesWarfield.cpp">
+      <Filter>Hades</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\HWState.cpp">
+      <Filter>Hades</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\HWStateFactory.cpp">
+      <Filter>Hades</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\TeamInfo.cpp">
+      <Filter>Hades</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\WarfieldFactory.cpp">
+      <Filter>Hades</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\WarfieldInfo.cpp">
+      <Filter>Hades</Filter>
+    </ClCompile>
+    <ClCompile Include="HigherLayers\Hades\WarfieldMgr.cpp">
+      <Filter>Hades</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -736,6 +763,36 @@
     </ClInclude>
     <ClInclude Include="HigherLayers\Winzs.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\GuardInfo.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\HadesWarfield.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\HWState.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\HWStateFactory.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\IFactoryDefine.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\IWarfieldDefine.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\TeamInfo.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\WarfieldFactory.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\WarfieldInfo.h">
+      <Filter>Hades</Filter>
+    </ClInclude>
+    <ClInclude Include="HigherLayers\Hades\WarfieldMgr.h">
+      <Filter>Hades</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

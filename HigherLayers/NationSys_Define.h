@@ -24,7 +24,50 @@
 #define		BASE_NEW_WARFIELD_PORT			5980
 #define		MAX_NEW_WARFIELD				1
 
+/**
+ * @emun eWARFIELD_PORT.
+ * @brief Warfield MapServer Port ½Äº°ÀÚ.
+ * @date 040120.
+ * @author LTH.
+ */
+typedef enum _eWARFIELD_PORT
+{
+#ifdef JAPAN_LOCALIZING_
+	WP_BASE_PORT = BASE_WARFIELD_PORT,
+	WP_MOUNTAIN_WARFIELD = WARFIELD_PORT1,	// »êÁß ÀüÀïÅÍ
+	WP_PLAIN_WARFIELD = WARFIELD_PORT2,	// Æò¿ø ÀüÀïÅÍ
+	WP_ISLAND_WARFIELD = WARFIELD_PORT3,	// ¼¶ ÀüÀïÅÍ
+	WP_SNOWY_WARFIELD = BASE_NEW_WARFIELD_PORT,	// ¼³¿ø ÀüÀïÅÍ
+	WP_HADES_WARFIELD = 12009,	// Hades Warfield Port
+	WP_MAX_WARFIELD_PORT = 12010,	// ÃÖ´ë ÀüÀïÅÍ Æ÷Æ® ¹øÈ£
+#else
+	WP_BASE_PORT = BASE_WARFIELD_PORT,
+	WP_MOUNTAIN_WARFIELD = 5991,	// »êÁß ÀüÀïÅÍ
+	WP_PLAIN_WARFIELD = 5992,	// Æò¿ø ÀüÀïÅÍ
+	WP_ISLAND_WARFIELD = 5993,	// ¼¶ ÀüÀïÅÍ
+	WP_SNOWY_WARFIELD = 5980,	// ¼³¿ø ÀüÀïÅÍ
+	WP_HADES_WARFIELD = 5994,	// Hades Warfield Port
+	WP_MAX_WARFIELD_PORT = 5995,	// ÃÖ´ë ÀüÀïÅÍ Æ÷Æ® ¹øÈ£
+#endif
+} eWARFIELD_PORT;
+//> LTH-040120-KO
 
+/**
+ * @emun eNEO_WARFIELD_ID.
+ * @brief Identity Each Warfield Map and Equal MapServer Port.
+ * @date 040126.
+ * @author LTH.
+ */
+typedef enum _eNEO_WARFIELD_ID
+{
+	WI_MOUNTAIN_WARFIELD = 0,	// »êÁß ÀüÀïÅÍ	(5991 - BASE_WARFIELD_PORT = 0)
+	WI_PLAIN_WARFIELD = 1,	// Æò¿ø ÀüÀïÅÍ	(5992 - BASE_WARFIELD_PORT = 1)
+	WI_ISLAND_WARFIELD = 2,	// ¼¶ ÀüÀïÅÍ	(5993 - BASE_WARFIELD_PORT = 2)
+	WI_SNOWY_WARFIELD = 3,	// ¼³¿ø ÀüÀïÅÍ	(WI_ISLAND_WARFIELD + 1 = 3)
+	WI_HADES_WARFIELD = 4,	// ÁöÇÏ ÀüÀïÅÍ	(5994 - BASE_WARFIELD_PORT + 1= 4)
+	WI_MAX_WARFIELD = 5,	// ÃÖ´ë ÀüÀïÅÍ °³¼ö
+} eNEO_WARFIELD_ID;
+//> LTH-040126-KO
 // WarLoop Time Define
 
 #define		NW_PEACETIME1					1803600			// LTS TEMP

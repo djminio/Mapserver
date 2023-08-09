@@ -3,10 +3,10 @@
  *			implementation of the CWarfieldInfo class.
  */
 //#include "..\stdafx.h"
-#include "StdAfx.h"	// 컴파일 시간이 20여분 걸려서, 최적화 작업
+#include "../../StdAfx.h"	// 컴파일 시간이 20여분 걸려서, 최적화 작업
 
 #include "WarfieldInfo.h"
-#include "LogManager.h"
+#include "../LogManager.h"
 
 
 /**
@@ -81,7 +81,7 @@ VOID CWarfieldInfo::LoadWarTimeInfo(INT nWarfieldNo)
 	SDWORD	cbValue;
 
 	// 일주일 간 해당 type의 전쟁이 일어나는 횟수 읽어오기.
-	SQLAllocStmt(g_hDBC_DragonDB, &hStmt);
+	SQLAllocStmt(hDBC, &hStmt);
 
 	wsprintfA(query_stmt,"select count(*) as NumDayHour from WarStartupTBL where Type=3");   
 
@@ -115,7 +115,7 @@ VOID CWarfieldInfo::LoadWarTimeInfo(INT nWarfieldNo)
 	m_atagWarTimeInfo[nWarfieldNo] = new CWarTimeInfo[m_btHowManyTimesWeek];
 
 	// 일주일간 일어나는 전쟁의 시간을 전쟁터에 따라 로딩.
-	SQLAllocStmt(g_hDBC_DragonDB, &hStmt);
+	SQLAllocStmt(hDBC, &hStmt);
 
 	wsprintfA(query_stmt,"select * from WarStartupTBL where Type=3 ORDER BY DayofWeek, DHour");   
 

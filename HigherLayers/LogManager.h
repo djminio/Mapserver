@@ -1,7 +1,9 @@
-// LogManager.h: interface for the CLogManager class.
+Ôªø// LogManager.h: interface for the CLogManager class.
 //
 //////////////////////////////////////////////////////////////////////
 
+#include "LTSSupport.h"
+#include "Scrp_exe.h"
 #if !defined(AFX_LOGMANAGER_H__564A7676_EFA9_408A_ABA6_9EBB37D1786E__INCLUDED_)
 #define AFX_LOGMANAGER_H__564A7676_EFA9_408A_ABA6_9EBB37D1786E__INCLUDED_
 
@@ -10,7 +12,7 @@
 #endif // _MSC_VER > 1000
 
 ///////////////////////////////////////////////////////////////////////////////
-// ∑Œ±◊ ∞¸∏Æ ¿ß«— ∞¸∏Æ ≈¨∑°Ω∫
+// Î°úÍ∑∏ Í¥ÄÎ¶¨ ÏúÑÌïú Í¥ÄÎ¶¨ ÌÅ¥ÎûòÏä§
 class CLogManager : public TSingleton<CLogManager>
 {
 	typedef map<int, string>     HASH_LOG;
@@ -33,19 +35,23 @@ public:
 	void SaveDeadEventNpc(CHARLIST* pTarget);
 	void SaveSealStoneInfo(CHARLIST* pSource, CHARLIST* pTarget, int nDamage); // CSD-040316
 	void SaveLocalWarInfo(CHARLIST* pTarget); // CSD-040407
-    void SaveDupe(CHARLIST* pTarget); //Thralas
+	void SaveDupe(CHARLIST* pTarget); //Thralas
 	void SaveTeleport(CHARLIST* pTarget, int newx, int newy); //Finito
-	void SaveEtc(CHARLIST* pTarget, char *info); //Thralas
+	void SaveEtc(CHARLIST* pTarget, char* info); //Thralas
 	void SaveAttackRange(CHARLIST* pTarget, char* info); // Finito 25/08/07
-	void SaveTimeChecks(CHARLIST* pTarget, char *info); // Finito 25/08/07
-	void SaveTileChecks(CHARLIST* pTarget, char *info); // Finito 26/08/07
-
+	void SaveTimeChecks(CHARLIST* pTarget, char* info); // Finito 25/08/07
+	void SaveTileChecks(CHARLIST* pTarget, char* info); // Finito 26/08/07
+	void SaveLogChange_Fame(CHARLIST* pTarget, int old_fame, int new_fame,
+		eLF_TYPE type);
+	void SaveLogNeoNationWar(const int nType, char* szLogMsg, ...);
+	void SaveLogChange_DualFame(CHARLIST* pTarget, const int nOldDualFame,
+		const int nNewDualFame, eLDF_TYPE type);
 	const char* ConvertToDay(int nDay) const;
 	const char* ConvertToTactics(int nKind) const;
 
 public:
-	void SaveAutionLog(int type,t_SellerItemDelete * pRecordInfo);	// BBD 040226 ø¡º«∑Œ±◊
-	void SaveEventItemLostLog(int type, char * szName, int nIndex);		// BBD 040308 ¿Ã∫•∆Æ æ∆¿Ã≈€ ∑ŒΩ∫∆Æ ∑Œ±◊
+	void SaveAutionLog(int type, t_SellerItemDelete* pRecordInfo);	// BBD 040226 Ïò•ÏÖòÎ°úÍ∑∏
+	void SaveEventItemLostLog(int type, char* szName, int nIndex);		// BBD 040308 Ïù¥Î≤§Ìä∏ ÏïÑÏù¥ÌÖú Î°úÏä§Ìä∏ Î°úÍ∑∏
 	bool GetLogPath(string& rPath)
 	{
 		if (!m_strRoot.empty())
@@ -75,7 +81,7 @@ private:
 	HASH_LOG m_mpBuffer;
 };
 
-inline void RewritePathWithSpecialCharacters( char *file, char *charname); //Eleval 16/08/09 - To save characters' logs with special characters
+inline void RewritePathWithSpecialCharacters(char* file, char* charname); //Eleval 16/08/09 - To save characters' logs with special characters
 //
 ///////////////////////////////////////////////////////////////////////////////
 #endif // !defined(AFX_LOGMANAGER_H__564A7676_EFA9_408A_ABA6_9EBB37D1786E__INCLUDED_)

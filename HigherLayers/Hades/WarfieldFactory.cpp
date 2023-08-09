@@ -4,7 +4,7 @@
  */
 
 //#include "..\stdafx.h"
-#include "StdAfx.h"	// 컴파일 시간이 20여분 걸려서, 최적화 작업
+#include "../../StdAfx.h"	// 컴파일 시간이 20여분 걸려서, 최적화 작업
 
 #include "WarfieldFactory.h"
 #include "HadesWarfield.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <list>
-#include "NationSys.h"
+#include "../NationSys.h"
 
 /**
  * @def		enum _eTEAM.

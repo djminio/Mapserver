@@ -3,15 +3,16 @@
  *			implementation of the CHadesWarfield class.
  */
 //#include "..\stdafx.h"
-#include "stdafx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
+#include "../../stdafx.h"	//060109_kch 컴파일 시간이 20여분 걸려서, 최적화 작업
 
 #include "HadesWarfield.h"
 #include "HWStateFactory.h"
 #include "WarfieldInfo.h"
 
 //#include "DefaultHeader.h"
-#include "UserManager.h"
-#include "LogManager.h"
+#include "../UserManager.h"
+#include "../LogManager.h"
+
 
 extern LPWARFIELDINFO g_pcWarfieldInfo;
 
@@ -19,7 +20,7 @@ extern LPWARFIELDINFO g_pcWarfieldInfo;
 void SendCMD_CHECK_REMAIN_GUARD(int nWarfieldNo, DWORD dwRemainTime, int aRemainGuard[MAX_TEAM][GS_MAX_GUARD_SPECIES])
 {
 	t_packet packet;
-	packet.h.header.type = CMD_CHECK_REMAIN_GUARD;
+	packet.h.header.type = 26505;
 	packet.u.NationWar.RemainGuard.nWarfieldNo = nWarfieldNo;
 	packet.u.NationWar.RemainGuard.dwRemainTime = dwRemainTime;
 	int nJ, nI;
@@ -506,9 +507,10 @@ STDMETHODIMP_(VOID) CHadesWarfield::CheckAndKickUser(INT nCn)
 STDMETHODIMP_(VOID) CHadesWarfield::LoopTimeChange(t_packet *p)
 {
 	m_lpWarfieldState->SetLoopTime(p->u.NationWar.WarLoopTime.LoopTime);
-	//< LTH-040323-KO 로그 강화
+	//< LTH-040323-KO 로그 강화NNT_WAR_INFO
 	g_pLogManager->SaveLogNeoNationWar(NNT_TIME_INFO, "[LoopTime Change] = %d",p->u.NationWar.WarLoopTime.LoopTime);
 	//> LTH-040323-KO
+	
 }
 
 VOID CHadesWarfield::CheckWinTeam()
@@ -536,7 +538,7 @@ VOID CHadesWarfield::UpdateNationPoint(INT nScore[NW_NATION_COUNT])
 	wsprintfA(szQuery, "EXEC dbo.up_set_nation_rank_point %d, %d, %d, %d", SUM_TYPE_NUM, nScore[0], \
 		nScore[1], nScore[2]);
 
-	SQLAllocStmt(g_hDBC_DragonDB, &hStmt);
+	SQLAllocStmt(hDBC, &hStmt);
 	
 	retCode = SQLExecDirectA(hStmt, (UCHAR*)szQuery, SQL_NTS);
 	if(retCode != SQL_SUCCESS && retCode != SQL_SUCCESS_WITH_INFO)
@@ -563,7 +565,7 @@ VOID GetSumNationPoint(INT nSumPoint[NW_NATION_COUNT])
 
 	wsprintfA(szQuery, "EXEC dbo.up_get_nation_rank_point %d", SUM_TYPE_NUM);
 
-	SQLAllocStmt(g_hDBC_DragonDB, &hStmt);
+	SQLAllocStmt(hDBC, &hStmt);
 
 	retCode = SQLExecDirectA(hStmt, (UCHAR*)szQuery, SQL_NTS);
 	if(retCode != SQL_SUCCESS && retCode != SQL_SUCCESS_WITH_INFO)
@@ -628,7 +630,7 @@ VOID CHadesWarfield::CheckWarStartTeam()
 	}	//> LTH-040323-KO
 }
 
-#include "RegenManager.h"
+#include "../RegenManager.h"
 
 extern void SendPacket2NationMaps(const int Nation, t_packet* p);
 extern void	SendPacket2NationClients(const int Nation,t_packet* p);
@@ -639,7 +641,7 @@ VOID CHadesWarfield::SendMonsterRaidMsg(BOOL bIsStart)
 
 	if (TRUE == bIsStart)
 	{
-		packet.h.header.type = CMD_MONSTER_RAID_START;
+		packet.h.header.type = 26502;
 		g_pRegenManager->Remove(CGroupInfo::ET_NORMAL); // CSD-040324 일반 몬스터 제거
 		g_pRegenManager->Ready(CGroupInfo::ET_HADES); // CSD-040324 전쟁이 시작되면 지하전쟁터의 몬스터 그룹이 활성화 된다
 		//< LTH-040323-KO 로그 강화
@@ -648,7 +650,7 @@ VOID CHadesWarfield::SendMonsterRaidMsg(BOOL bIsStart)
 	}
 	else
 	{
-		packet.h.header.type = CMD_MONSTER_RAID_END;
+		packet.h.header.type = 26503;
 		g_pRegenManager->Remove(CGroupInfo::ET_HADES); // CSD-040324 전쟁이 끝나면 지하전쟁터의 몬스터 그룹이 제거 된다
 		g_pRegenManager->Ready(CGroupInfo::ET_NORMAL); // CSD-040324 일반 몬스터 그룹 활성화
 		//< LTH-040323-KO 로그 강화
@@ -746,7 +748,7 @@ VOID CHadesWarfield::GiveFame(INT TeamNo, LPCHARLIST lpCaster, LPCHARLIST lpTarg
 	{
 	case 64 :	
 		//< LTH-040324-KO Fame 로그 강화
-		g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 20, LF_NATIONWAR);
+		//g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 20, LF_NATIONWAR);
 		sOldFame = lpCaster->fame;
 		lpCaster->fame += 20; 	
 		g_pLogManager->SaveLogNeoNationWar(NNT_FAME_INFO, "%s Fame Change : Old Fame = %d, Current Fame = %d, Add Fame = %d", \
@@ -758,7 +760,7 @@ VOID CHadesWarfield::GiveFame(INT TeamNo, LPCHARLIST lpCaster, LPCHARLIST lpTarg
 
 	case 63 :
 		//< LTH-040324-KO Fame 로그 강화
-		g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 15, LF_NATIONWAR);
+		// g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 15, LF_NATIONWAR);
 		sOldFame = lpCaster->fame;
 		lpCaster->fame += 15; 									
 		g_pLogManager->SaveLogNeoNationWar(NNT_FAME_INFO, "%s Fame Change : Old Fame = %d, Current Fame = %d, Add Fame = %d", \
@@ -772,7 +774,7 @@ VOID CHadesWarfield::GiveFame(INT TeamNo, LPCHARLIST lpCaster, LPCHARLIST lpTarg
 		//< LTH-040315-KO 성문은 두개 다깨도 한번만 Fame을 받도록...
 		if (TRUE == m_lpGuard[TEAM2].IsTargetBroken(lpTarget, GS_GATE))
 		{	//< LTH-040324-KO Fame 로그 강화
-			g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 10, LF_NATIONWAR);
+		//	g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 10, LF_NATIONWAR);
 			sOldFame = lpCaster->fame;
 			lpCaster->fame += 10;
 			g_pLogManager->SaveLogNeoNationWar(NNT_FAME_INFO, "%s Fame Change : Old Fame = %d, Current Fame = %d, Add Fame = %d", \
@@ -786,7 +788,7 @@ VOID CHadesWarfield::GiveFame(INT TeamNo, LPCHARLIST lpCaster, LPCHARLIST lpTarg
 		
 	case 178 :
 		//< LTH-040324-KO Fame 로그 강화
-		g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 15, LF_NATIONWAR);
+		//g_pLogManager->SaveLogChange_Fame(lpCaster, lpCaster->fame, lpCaster->fame + 15, LF_NATIONWAR);
 		sOldFame = lpCaster->fame;
 		lpCaster->fame += 15; 									
 		g_pLogManager->SaveLogNeoNationWar(NNT_FAME_INFO, "%s Fame Change : Old Fame = %d, Current Fame = %d, Add Fame = %d", \

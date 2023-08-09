@@ -181,7 +181,7 @@
 #define		CMD_GUARD_BROKE							26381
 #define		CMD_LOCALWAR_BEGIN_TIME					26382 // finito 050707 the remaining time until local war starts
 #define		CMD_SERVER_TIME							26383 // finito 060707
-
+#define     CMD_GUARD_CAN_NOT_BROKE					26501
 //<soto-030417
 #define		CMD_SYMBOL_MAKE							26400
 #define		CMD_SYMBOL_UPGRADE						26401
@@ -909,14 +909,135 @@ struct NEWWAR_START
 	unsigned char	LevelMax;
 };
 
-struct GUARD_BROKE
+struct GUARD_BROKE//reece
 {
+	int				nWarfieldNo;	// 1.4 Patch.
+	int				aRemainGuard[2][4];	// 정보 표시를 위해
 	char			BrokeTeamNo;
 	char			Type;							// 0 : 성문 1 : 수호석
 	char			GuardNo;
 	short			X;
 	short			Y;
 };
+typedef struct CheckSquadMemberCount_
+{
+	char cWarfieldNo;
+	char cSquad;
+}	t_CheckSquadMemberCount;
+
+/**
+ * @struct	CheckSquadMemberCountR_.
+ * @brief	부대 인원 체크 결과.
+ */
+typedef struct CheckSquadMemberCountR_
+{
+	char cWarfieldNo;
+	char cResult;
+}	t_CheckSquadMemberCountR;
+
+/**
+ * @struct	NEO_WARFIELD_DATA.
+ * @brief	신규 전쟁터 정보 전송용.
+ */
+struct NEO_WARFIELD_DATA
+{
+	DWORD dwRemainTime;
+	INT nWarfieldNo;				// 전쟁번호를 실어보낸다.
+	INT nTeamCount[2];
+	INT nRemainGuardCount[2][4];		// 각각의 남은 Guard 수 0 : 최종수호석, 1 : 내성수호석, 2 : 성문 3 : 외성수호석
+	CHAR cGuardStatus[2][17];	// Hades War에 맞춰져있다. 외성 : 4, 성문(좌) : 4, 성문(우) : 4, 내성 : 4, 최종 : 1
+};
+
+/**
+ * @struct	NEO_WAR_RESULT.
+ * @brief	전쟁 결과 전송용.
+ */
+struct NEO_WAR_RESULT
+{
+	INT nBYMemberCount;
+	INT nZYMemberCount;
+	INT nYLMemberCount;
+	INT nBYDeathCount;
+	INT nZYDeathCount;
+	INT nYLDeathCount;
+	bool bAllNationJoin;	// 모든 나라가 습격을 받으면 전쟁 결과 창을 띄우지 않기 위해
+	WORD wWarfieldPort;
+	CHAR cVictoryTeam;
+};
+
+/**
+ * @struct	GUARD_CAN_NOT_BROKE.
+ * @brief	가드를 부술수 없는 이유전송.
+ */
+struct GUARD_CAN_NOT_BROKE
+{
+	int nWarfieldNo;
+	int nType;
+};
+
+/**
+ * @struct	REMAIN_GUARD.
+ * @brief	남은 가드(성문, 수호석)의 수를 반환한다.
+ */
+struct REMAIN_GUARD
+{
+	DWORD dwRemainTime;				// 걍 전쟁 남은 시간까지 보내자구
+	int nWarfieldNo;				// 전쟁터 번호를 보내자구!!
+	int aRemainGuardCount[2][4];	// 당돌 남은 가드 수도 보내야쥐~!
+};
+//>------------------------------- 1.04 addition ------------------------------------------
+
+//<------------------------------- 1.04+ addition ------------------------------------------
+size_t const CMD_NW_MAP_PEACE_MOVE = 26506;	// 평화 기간의 전쟁터 이동 요청 C -> M
+size_t const CMD_NW_MAP_PEACE_MOVE_RESULT = 26507;	// 평화 기간에 요청한 전쟁터 이동 결과 M -> C
+size_t const CMD_WARFIELD_INFO = 26508;	// 전쟁터 소유자와 전쟁터 상태 요청 M -> WM
+size_t const CMD_WARFIELD_INFO_RESULT = 26509;	// 전쟁터 소유자와 전쟁터 상태 요청 WM -> M
+
+/**
+ * @struct	tagWarfieldPeaceMove.
+ * @brief	평화 기간에 전쟁터에 이동 요청 할때에 필요.
+ */
+typedef struct tagWARFIELD_PEACE_MOVE
+{
+	int nWarfieldNo;		// 이동할 전쟁터 번호.
+	int nUserID;			// 이동할 유저의 ID.
+} tagWarfieldPeaceMove;
+
+/**
+ * @struct	tagWarfieldPeaceMoveResult.
+ * @brief	평화 기간에 전쟁터에 이동 요청에 대한 결과.
+ */
+typedef struct tagWARFIELD_PEACE_MOVE_RESULT
+{
+	DWORD dwYlMoveMoney;		// 일스의 이동 요금
+	int nResult;				// 전쟁터 이동 요청 결과. 일종의 결과 코드 형식이다.
+	int nWarfieldNo;			// 전쟁터 번호
+	int nPossessionNation;		// 소유국가 번호
+} tagWarfieldPeaceMoveResult;
+
+/**
+ * @struct	tagWarfieldInfo.
+ * @brief	전쟁터 소유자와 전쟁터 상태 요청.
+ */
+typedef struct tagWARFIELD_INFO
+{
+	int nWarfieldNo;			// 요청할 전쟁터
+	int nUserID;				// 이동할 유저의 ID.
+	WORD wPort;					// 요청한 맵서버 포트
+} tagWarfieldInfo;
+
+/**
+ * @struct	tagWarfieldInfoResult.
+ * @brief	전쟁터 소유자와 전쟁터 상태 요청 결과.
+ */
+typedef struct tagWARFIELD_INFO_RESULT
+{
+	int nWarfieldNo;			// 이동할 전쟁터 번호.
+	int nUserID;				// 이동할 유저의 ID.
+	int nWarfieldPossession;	// 전쟁터 소유자
+	int nWarfieldStatus;		// 전쟁터 상태
+} tagWarfieldInfoResult;
+//>------------------------------- 1.04+ addition ------------------------------------------
 
 typedef union NationWar_P
 {
@@ -998,6 +1119,16 @@ typedef union NationWar_P
 	NEWWAR_START				NewWarStart;
 	NOTICE_SOPEN				NoticeSOpen;
 	GUARD_BROKE					GuardBroke;
+	t_CheckSquadMemberCount		CheckSquadMemberCount;		// Hades War 부대 인원수
+	t_CheckSquadMemberCountR	CheckSquadMemberCountR;		// Hades War 부대 인원체크 결과
+	NEO_WARFIELD_DATA			NeoWarfieldData;			// 전쟁터 데이터 전송용
+	NEO_WAR_RESULT				NeoWarResult;				// 1.4 새 전쟁터 결과 정보
+	GUARD_CAN_NOT_BROKE			GuardCanNotBroke;			// 가드를 부술 수 없는 이유 전송
+	REMAIN_GUARD				RemainGuard;				// 남은 가드들의 수를 반환
+	tagWarfieldPeaceMove		WarfieldPeaceMove;			// 1.4+ 평화기간 전쟁터 이동.
+	tagWarfieldPeaceMoveResult	WarfieldPeaceMoveR;			// 1.4+ 평화기간 전쟁터 이동 결과.
+	tagWarfieldInfo				WarfieldInfoToManager;		// 1.4+ 전쟁 관리서버에게 전쟁터 소유자와 상태를 요청.
+	tagWarfieldInfoResult		WarfieldInfoFromManager;	// 1.4+ 전쟁 관리서버가 전쟁터 소유자와 상태를 반환.
 } t_NationWar;
 
 typedef struct LocalWarInfo1_							// LTS LOCALWAR

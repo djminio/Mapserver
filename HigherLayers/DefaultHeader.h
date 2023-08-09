@@ -116,6 +116,24 @@ enum LOG_TYPE
 	LT_NATIONTRANSFER = 23, // Finito 12/06/09
 	LT_SEXCHANGE = 24, // Finito 12/06/09
 	LT_TACTICUP = 25, //Eleval 15/08/09 - Log when Tactic Level Up >= 100
+	LT_NEONATIONWAR = 26,					// 1.04 신규 국가전을 위한 로그
+	LT_MOVETOWARFIELD = 27,					// 1.04+ 평화 기간 전쟁터 이동 관련 로그
+};
+enum NEO_NATIONWAR_TYPE
+{ // 1.04 신규 국가전을 위한 로그 종류
+	NNT_TIME_INFO = 0,			// 시간 정보 관련
+	NNT_STATE_INFO = 1,			// 상태 정보 관련
+	NNT_FAME_INFO = 2,			// Fame 정보 관련
+	NNT_CHARACTER_INFO = 3,		// Character 정보 관련
+	NNT_WAR_INFO = 4,			// 전쟁 정보 관련
+};
+
+enum MOVE_TO_WARFIELD_TYPE
+{ //1.04p 평화기간 전쟁터 이동 관련 로그 종류
+	MTWT_GUARD_INFO = 0,		// 가드 정보 관련
+	MTWT_STATE_INFO = 1,		// 상태 정보 관련
+	MTWT_MONSTER_INFO = 2,		// 전쟁터 리젠 몬스터 관련
+	MTWT_CHARACTER_INFO = 3,	// Character 정보 관련
 };
 
 //<! BBD 040308 이벤트 아이템 로그 타입

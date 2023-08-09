@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NationSys.h"
+#include "../NationSys.h"
 
 typedef enum _eGUARD_SPECIES
 {

@@ -3,11 +3,11 @@
  *			implementation of the CTeamInfo class.
  */
 //#include "..\stdafx.h"
-#include "StdAfx.h"	// 컴파일 시간이 20여분 걸려서, 최적화 작업
+#include "../../StdAfx.h"	// 컴파일 시간이 20여분 걸려서, 최적화 작업
 
 #include "TeamInfo.h"
 #include "WarfieldInfo.h"
-#include "LogManager.h"
+#include "../LogManager.h"
 
 CSquad::CSquad()
 : m_nSquadLeader(-1)
@@ -241,7 +241,7 @@ VOID CSquad::GiveFame(LPCHARLIST lpCaster, LPCHARLIST lpTarget, INT nRange, INT 
 			dwTargetRange = (nSx - nDx) * (nSx - nDx) + (nSy - nDy) * (nSy - nDy);
 			if (dwTileRange > dwTargetRange)
 			{
-				g_pLogManager->SaveLogChange_Fame(lpChar, lpChar->fame, lpChar->fame + nAddFame, LF_NATIONWAR);
+				//g_pLogManager->SaveLogChange_Fame(lpChar, lpChar->fame, lpChar->fame + nAddFame, LF_NATIONWAR);
 				g_pLogManager->SaveLogNeoNationWar(NNT_FAME_INFO, "Fame Change, Name : %s, OldFame : %d, NewFame : %d, Gap : %d", \
 					lpChar->Name, lpChar->fame, lpChar->fame + nAddFame, nAddFame);
 				lpChar->fame += nAddFame;
@@ -251,7 +251,7 @@ VOID CSquad::GiveFame(LPCHARLIST lpCaster, LPCHARLIST lpTarget, INT nRange, INT 
 	}
 }
 
-#include "Scrp_exe.h"
+#include "../Scrp_exe.h"
 /* g_pLogManager로 이동(정리목적)
 extern void SaveLogChange_DualFame( CHARLIST *ch, const int nOldDualFame, const int nNewDualFame, eLDF_TYPE type);
 */
@@ -277,7 +277,7 @@ VOID CSquad::GiveFame2Dual(INT nAddFame)
 			continue;
 		if (lpChar->IsDual())
 		{
-			g_pLogManager->SaveLogChange_DualFame(lpChar, lpChar->fame, lpChar->fame + nAddFame, LDF_NEOWAR);
+			//g_pLogManager->SaveLogChange_DualFame(lpChar, lpChar->fame, lpChar->fame + nAddFame, LDF_NEOWAR);
 			g_pLogManager->SaveLogNeoNationWar(NNT_FAME_INFO, "Fame Change, Name : %s, OldFame : %d, NewFame : %d, Gap : %d", \
 				lpChar->Name, lpChar->fame, lpChar->fame + nAddFame, nAddFame);
 			lpChar->fame += nAddFame;

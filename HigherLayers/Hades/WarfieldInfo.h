@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IWarfieldDefine.h"
-#include "LogManager.h"
+#include "../LogManager.h"
 
 int const LIMITNATIONPOINT	=	30;	/**< LTH-040412-KO 몬스터 국가전 참가 가능 포인트. */
 
@@ -118,9 +118,9 @@ public:
 protected:
 	INT m_nNumOfWarfield;								/**< 전쟁터의 총 개수. */
 	BYTE m_btHowManyTimesWeek;							/**< 한 주에 몇번 열리는지. */
-	CWarTimeInfo* m_atagWarTimeInfo[WI_MAX_WARFIELD];	/**< 전쟁 시간 설정. */
-	CSoldierSet	m_acSoldierSet[WI_MAX_WARFIELD];		/**< 전쟁터 부대 설정. */
-	CMapSetting	m_acMapSetting[WI_MAX_WARFIELD];		/**< 전쟁터 맵 설정. */
+	CWarTimeInfo* m_atagWarTimeInfo[5];	/**< 전쟁 시간 설정. */
+	CSoldierSet	m_acSoldierSet[5];		/**< 전쟁터 부대 설정. */
+	CMapSetting	m_acMapSetting[5];		/**< 전쟁터 맵 설정. */
 	DWORD m_dwYlWarfieldMoveMoney;						/**< LTH-040429-KO 일스 유저의 평화간 전쟁터 이동 요금. */
 	int m_nGoOutsideBBSTime;							/**< LTH-040507-KO 투표기간 전쟁터 유저 방출 공지 표시 간격. */
 	int m_nNumOfGoOutsideUser;							/**< LTH-040507-KO 한번에 전쟁터에서 방출시킬 유저의 수. */
