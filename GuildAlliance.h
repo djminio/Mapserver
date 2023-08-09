@@ -83,7 +83,7 @@ public:
         char guildname[40];
         int type;
 
-    }t_Alliance_chat;
+    }t_Alliance_officer_chat;
     void MakeOfficers(CHARLIST* Player);
 
     GuildAlliance();
@@ -92,19 +92,21 @@ public:
     static bool LoadAllianceTable();
 
     bool AllianceLevelUp() { return ga_AllianceLevelup; };//check if alliance leveled up yet
-   int  Alliancexp() { return ga_AllianceExp; };//curr exp
+    int  Alliancexp() { return ga_AllianceExp; };//curr exp
+
     void setAllianceExp(int exp) { ga_AllianceExp = exp; };// we set what exp the alliance gets reece
     void CheckLevelUp(int cn);
 
-   void SetAllianceCode(int code) { ga_alliancecode = code; };
-   int GetAllianceCode() { return ga_alliancecode; };
+    void SetAllianceCode(int Alliancecode) { ga_alliancecode = Alliancecode; };
+    int GetAllianceCode() { return ga_alliancecode; };
 
     void setAllianceRank(int rank) { ga_AllianceRank = rank; };
     int GetAllianceRank() { return ga_AllianceRank; };
 
     void checkforDuplication();
-    int getAllianceCode();
-    int CreateAllianceCode();
+
+
+    int CreateAllianceCode(int guildcode);
 
     int getAllianceLevel() { return AllianceLevel;};
     void setAllianceLevel(int level) { AllianceLevel = level; };
@@ -115,10 +117,13 @@ public:
     void MakeSubMasters(CHARLIST* Player);
     //functions for the packets mapserver to client and viceversa
     void AllianceChat(packet* p);
-    void AllianceOfficerChat(packet* p);
-    void SendAllianceChat(t_Alliance_chat*p);
-    void SendOfficerChat(t_Alliance_chat* p);
 
+    void SendAllianceChat(t_Alliance_chat* p);
+    void RecvAllianceChat(t_Alliance_chat*p);
+
+    void SendOfficerChat(t_Alliance_officer_chat* p);
+    void RecvOfficerChat(t_Alliance_officer_chat* p);
+    
 public:
     int AllianceLevel;
     bool ga_AllianceLevelup;
